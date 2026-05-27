@@ -18,7 +18,7 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Lokaler Feed-Cache (Instant-Start, offline) — `FeedCache`, `Article: Codable`, in `NewsFeedViewModel` integriert
 - [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
 - [x] Lesezeichen („Gemerkt") — `BookmarkStore`, Detail-Button, `BookmarksView`
-- [x] Cloudflare-Worker (`worker/`) für Feed-Aggregation + `RemoteFeedService` mit RSS-Fallback (Phase-1-Code; Deploy offen)
+- [x] Cloudflare-Worker (`worker/`) deployed, aggregiert Polizei + Feuerwehr + Stadt Gelsenkirchen (RSS + Atom); App liest ihn via `RemoteFeedService` mit RSS-Fallback
 - [x] `README.md` angelegt
 - PRs: #1 (Push + Karte) gemergt; #3 (Rebrand + Folgearbeiten) offen
 
@@ -48,9 +48,9 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 
 ## 3. Cloudflare-Backend (Aggregations- + Cache-Schicht)
 Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vorgebauten JSON-Endpunkt statt selbst N Feeds zu laden.
-- [x] **Phase 1 (Code fertig, Deploy durch Betreiber offen):** Worker in `worker/` (`scheduled` + `fetch`) aggregiert die Quelle, schreibt nach KV, liefert `GET /v1/feed` (mit ETag/Cache-Control, Lazy-Build); App-seitig `RemoteFeedService` mit **RSS-Fallback**, in `NewsService.feed` eingehängt. Parsing gegen echten Feed mit Node geprüft.
-  - Offen für Betreiber: `worker/` deployen (siehe README), KV-`id` in `wrangler.jsonc`, dann `baseURL` in `RemoteFeedService.swift` eintragen.
-- [ ] **Phase 2:** Quellen-Adapter-Pattern (`id`/`fetch`/`normalize`) → neue Quellen rein serverseitig (siehe Punkt 4)
+- [x] **Phase 1 (live):** Worker (`scheduled` + `fetch`) aggregiert nach KV, liefert `GET /v1/feed` (ETag/Cache-Control, Lazy-Build); App liest ihn via `RemoteFeedService` mit **RSS-Fallback**. Deployed auf `gelsenkirchen-news.vwcampermieten.workers.dev`, `baseURL` gesetzt.
+- [x] **Phase 2 (begonnen):** Quellen über `SOURCES`-Array + `format` (`rss`/`atom`) → neue Quellen rein serverseitig. Drin: Polizei, Feuerwehr, Stadt GE. Neue Quelle = `SOURCES` erweitern + `wrangler deploy` (kein App-Release).
+  - Bei Worker-Änderungen muss der Betreiber `cd worker && wrangler deploy` ausführen.
 - [ ] **Phase 3:** (verworfen, falls Geocoding on-device bleibt) — sonst Geocoding in den Worker verlagern
 - [ ] **Phase 4:** (optional) Push in den Worker integrieren; GitHub-Poller abschalten
 - Beachten: Free-Tier = 50 externe Subrequests pro Aufruf → bei vielen Quellen begrenzen.
