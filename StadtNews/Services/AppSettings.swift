@@ -13,17 +13,24 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hasCompletedOnboarding, forKey: Keys.onboarding) }
     }
 
+    /// Whether the user wants push notifications for new articles.
+    @Published var pushEnabled: Bool {
+        didSet { defaults.set(pushEnabled, forKey: Keys.push) }
+    }
+
     private let defaults: UserDefaults
 
     private enum Keys {
         static let cities = "selectedCityIDs"
         static let onboarding = "hasCompletedOnboarding"
+        static let push = "pushEnabled"
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.selectedCityIDs = defaults.stringArray(forKey: Keys.cities) ?? []
         self.hasCompletedOnboarding = defaults.bool(forKey: Keys.onboarding)
+        self.pushEnabled = defaults.bool(forKey: Keys.push)
     }
 
     /// Selected cities resolved against the catalog, preserving order.

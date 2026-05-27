@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct StadtNewsApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings = AppSettings()
 
     var body: some Scene {
@@ -9,6 +10,16 @@ struct StadtNewsApp: App {
             RootView()
                 .environmentObject(settings)
                 .tint(Theme.Color.brand)
+                .onAppear {
+                    PushService.shared.setEnabled(settings.pushEnabled)
+                    PushService.shared.syncCityTags(settings.selectedCityIDs)
+                }
+                .onChange(of: settings.pushEnabled) { _, enabled in
+                    PushService.shared.setEnabled(enabled)
+                }
+                .onChange(of: settings.selectedCityIDs) { _, ids in
+                    PushService.shared.syncCityTags(ids)
+                }
         }
     }
 }
