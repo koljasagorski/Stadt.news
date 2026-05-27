@@ -53,6 +53,25 @@ Der Poller (`scripts/news_push.py`) läuft per GitHub Actions zeitgesteuert, pr�
 den Feed und sendet für neue Meldungen eine Push über die OneSignal-REST-API.
 Ohne Secrets läuft er als „Dry Run" (sendet nichts).
 
+## Backend (optional, Cloudflare Worker)
+Unter [`worker/`](./worker) liegt ein Cloudflare-Worker, der die Feeds
+serverseitig vorab aggregiert und unter `GET /v1/feed` als fertiges JSON
+ausliefert — das beschleunigt den Start und erlaubt später weitere Quellen
+ohne App-Update. Die App nutzt ihn automatisch, sobald eine URL hinterlegt ist,
+und fällt sonst auf direktes RSS zurück.
+
+Deployen (Cloudflare-Konto nötig):
+```
+cd worker
+npm install
+npx wrangler login
+npx wrangler kv namespace create NEWS   # die id in wrangler.jsonc eintragen
+npx wrangler deploy                      # die *.workers.dev-URL notieren
+```
+Danach die URL in `StadtNews/Services/RemoteFeedService.swift` (`baseURL`)
+eintragen. Geocoding (Karte) und Push bleiben vorerst on-device bzw. beim
+GitHub-Poller.
+
 ## Datenquelle
 Presseportal-RSS der Polizei Gelsenkirchen (news aktuell GmbH). Alle Rechte an
 den Inhalten verbleiben bei den jeweiligen Herausgebern.

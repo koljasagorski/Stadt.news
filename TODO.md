@@ -18,15 +18,16 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Lokaler Feed-Cache (Instant-Start, offline) — `FeedCache`, `Article: Codable`, in `NewsFeedViewModel` integriert
 - [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
 - [x] Lesezeichen („Gemerkt") — `BookmarkStore`, Detail-Button, `BookmarksView`
+- [x] Cloudflare-Worker (`worker/`) für Feed-Aggregation + `RemoteFeedService` mit RSS-Fallback (Phase-1-Code; Deploy offen)
 - [x] `README.md` angelegt
 - PRs: #1 (Push + Karte) gemergt; #3 (Rebrand + Folgearbeiten) offen
 
-## Offene Entscheidungen (vor Umsetzung klären)
-- [ ] Geocoding serverseitig: Nominatim (gratis, ToS/Rate-Limit) vs. weiter on-device vs. bezahlt (Mapbox/Google)?
-- [ ] Push in den Cloudflare-Worker migrieren oder GitHub-Poller behalten?
-- [ ] Worker-Sprache: TypeScript ok?
-- [ ] API-Hosting: `*.workers.dev` zum Start oder eigene Domain?
-- [ ] Home-Screen-Name: „Gelsenkirchen.news" (wird evtl. abgeschnitten) oder „GE.news"?
+## Entscheidungen (getroffen)
+- [x] Geocoding bleibt **on-device** (Worker macht kein Geocoding)
+- [x] Push bleibt vorerst beim **GitHub-Poller** (Worker macht kein Push)
+- [x] Worker-Sprache: **TypeScript**
+- [x] API-Hosting: Start auf **`*.workers.dev`**
+- [ ] Home-Screen-Name: „Gelsenkirchen.news" (wird evtl. abgeschnitten) oder „GE.news"? (noch offen)
 
 ---
 
@@ -47,12 +48,13 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 
 ## 3. Cloudflare-Backend (Aggregations- + Cache-Schicht)
 Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vorgebauten JSON-Endpunkt statt selbst N Feeds zu laden.
-- [ ] **Phase 1:** Worker (`scheduled` + `fetch`) aggregiert die aktuelle Quelle, schreibt Feed nach KV, liefert `GET /v1/feed`; App-seitig `RemoteFeedService` mit **RSS-Fallback** + Edge-Cache/ETag
+- [x] **Phase 1 (Code fertig, Deploy durch Betreiber offen):** Worker in `worker/` (`scheduled` + `fetch`) aggregiert die Quelle, schreibt nach KV, liefert `GET /v1/feed` (mit ETag/Cache-Control, Lazy-Build); App-seitig `RemoteFeedService` mit **RSS-Fallback**, in `NewsService.feed` eingehängt. Parsing gegen echten Feed mit Node geprüft.
+  - Offen für Betreiber: `worker/` deployen (siehe README), KV-`id` in `wrangler.jsonc`, dann `baseURL` in `RemoteFeedService.swift` eintragen.
 - [ ] **Phase 2:** Quellen-Adapter-Pattern (`id`/`fetch`/`normalize`) → neue Quellen rein serverseitig (siehe Punkt 4)
-- [ ] **Phase 3:** Geocoding in den Worker verlagern (Koordinaten in KV cachen); Karte liest `lat/lng` aus der API
-- [ ] **Phase 4:** Push in den Worker integrieren; GitHub-Poller abschalten
-- Beachten: Free-Tier = 50 externe Subrequests pro Aufruf → Geocoding cachen, pro Lauf begrenzen.
-- Tooling: Wrangler, Worker-Code in `worker/`, Secrets via `wrangler secret put`.
+- [ ] **Phase 3:** (verworfen, falls Geocoding on-device bleibt) — sonst Geocoding in den Worker verlagern
+- [ ] **Phase 4:** (optional) Push in den Worker integrieren; GitHub-Poller abschalten
+- Beachten: Free-Tier = 50 externe Subrequests pro Aufruf → bei vielen Quellen begrenzen.
+- Tooling: Wrangler, Worker-Code in `worker/`.
 
 ## 4. Weitere News-Quellen
 - [ ] Quellen-Adapter-Schnittstelle definieren (am besten im Worker, Punkt 3 Phase 2)
