@@ -4,27 +4,15 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
-    @State private var query = ""
-
-    private var filteredCities: [City] {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return City.catalog }
-        return City.catalog.filter {
-            $0.name.localizedCaseInsensitiveContains(query) ||
-            $0.state.localizedCaseInsensitiveContains(query)
-        }
-    }
-
     var body: some View {
         NavigationStack {
             List {
-                citiesSection
                 notificationsSection
                 aboutSection
             }
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Theme.Color.paper.ignoresSafeArea())
-            .searchable(text: $query, prompt: "Stadt suchen")
             .navigationTitle("Einstellungen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -40,46 +28,6 @@ struct SettingsView: View {
         }
     }
 
-    private var citiesSection: some View {
-        Section {
-            ForEach(filteredCities) { city in
-                cityRow(city)
-            }
-        } header: {
-            Text("Meine Städte")
-        } footer: {
-            Text("Tippen Sie auf eine Stadt, um sie hinzuzufügen oder zu entfernen. Mindestens eine Stadt muss ausgewählt sein.")
-        }
-    }
-
-    private func cityRow(_ city: City) -> some View {
-        let isSelected = settings.isSelected(city)
-        let isLast = isSelected && settings.selectedCityIDs.count == 1
-
-        return Button {
-            withAnimation(.easeOut(duration: 0.15)) { settings.toggle(city) }
-        } label: {
-            HStack(spacing: Theme.Spacing.md) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(city.name)
-                        .font(.system(.body, design: .serif).weight(.semibold))
-                        .foregroundStyle(Theme.Color.ink)
-                    Text(city.source)
-                        .font(Theme.Font.meta)
-                        .foregroundStyle(Theme.Color.secondaryInk)
-                }
-                Spacer()
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 22))
-                    .foregroundStyle(isSelected ? Theme.Color.brand : Theme.Color.hairline)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(isLast)
-        .listRowBackground(Theme.Color.surface)
-    }
-
     private var notificationsSection: some View {
         Section {
             Toggle(isOn: $settings.pushEnabled) {
@@ -92,7 +40,7 @@ struct SettingsView: View {
         } header: {
             Text("Mitteilungen")
         } footer: {
-            Text("Erhalten Sie eine Mitteilung, sobald in Ihren Städten eine neue Meldung erscheint. Sie können dies jederzeit ändern.")
+            Text("Erhalten Sie eine Mitteilung, sobald in Gelsenkirchen eine neue Meldung erscheint. Sie können dies jederzeit ändern.")
         }
     }
 
@@ -102,9 +50,9 @@ struct SettingsView: View {
             LabeledContent("Bereitgestellt durch", value: "news aktuell")
             LabeledContent("Version", value: Self.appVersion)
         } header: {
-            Text("Über Stadt.news")
+            Text("Über Gelsenkirchen.news")
         } footer: {
-            Text("Stadt.news bündelt offizielle Polizeimeldungen aus dem Presseportal (news aktuell GmbH). Alle Rechte an den Inhalten verbleiben bei den jeweiligen Herausgebern.")
+            Text("Gelsenkirchen.news bündelt offizielle Polizeimeldungen aus dem Presseportal (news aktuell GmbH). Alle Rechte an den Inhalten verbleiben bei den jeweiligen Herausgebern.")
         }
         .listRowBackground(Theme.Color.surface)
     }

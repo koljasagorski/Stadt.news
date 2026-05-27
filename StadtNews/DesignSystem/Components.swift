@@ -33,20 +33,21 @@ struct MetaDot: View {
     }
 }
 
-/// The "Stadt.news" nameplate.
+/// The "Gelsenkirchen.news" nameplate. Uses the short "GE.news" form in
+/// tight spaces (e.g. the navigation bar) and the full name where there's room.
 struct Masthead: View {
     var compact = false
 
     var body: some View {
         HStack(spacing: 0) {
-            Text("Stadt")
+            Text(compact ? "GE" : "Gelsenkirchen")
                 .foregroundStyle(Theme.Color.ink)
             Text(".news")
                 .foregroundStyle(Theme.Color.brand)
         }
         .font(compact ? Theme.Font.mastheadCompact : Theme.Font.masthead)
         .accessibilityAddTraits(.isHeader)
-        .accessibilityLabel("Stadt.news")
+        .accessibilityLabel("Gelsenkirchen.news")
     }
 }
 

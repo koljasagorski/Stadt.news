@@ -17,9 +17,6 @@ struct StadtNewsApp: App {
                 .onChange(of: settings.pushEnabled) { _, enabled in
                     PushService.shared.setEnabled(enabled)
                 }
-                .onChange(of: settings.selectedCityIDs) { _, ids in
-                    PushService.shared.syncCityTags(ids)
-                }
         }
     }
 }

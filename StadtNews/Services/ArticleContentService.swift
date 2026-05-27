@@ -35,7 +35,7 @@ actor ArticleContentService {
 
         var request = URLRequest(url: url)
         request.setValue(
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Stadt.news/1.0",
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Gelsenkirchen.news/1.0",
             forHTTPHeaderField: "User-Agent"
         )
         request.setValue("text/html,application/xhtml+xml", forHTTPHeaderField: "Accept")

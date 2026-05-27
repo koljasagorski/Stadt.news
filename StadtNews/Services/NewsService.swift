@@ -42,7 +42,7 @@ final class NewsService: Sendable {
     /// Loads and parses a single city's feed.
     func articles(for city: City) async throws -> [Article] {
         var request = URLRequest(url: city.feedURL)
-        request.setValue("Stadt.news/1.0 (iOS; native RSS reader)", forHTTPHeaderField: "User-Agent")
+        request.setValue("Gelsenkirchen.news/1.0 (iOS; native RSS reader)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/rss+xml, application/xml;q=0.9", forHTTPHeaderField: "Accept")
 
         let (data, response) = try await session.data(for: request)
