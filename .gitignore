@@ -29,3 +29,8 @@ state/
 ## Python
 __pycache__/
 *.pyc
+
+## Cloudflare Worker
+worker/node_modules/
+worker/.wrangler/
+worker/dist/

@@ -64,14 +64,14 @@ final class IncidentMapModel: ObservableObject {
 
         for article in pending {
             guard let center = Self.cityCenters[article.cityID],
-                  let street = Self.street(in: article) else {
+                  let hint = Self.locationHint(in: article) else {
                 misses.insert(article.id)
                 missed += 1
                 unlocatedCount = missed
                 continue
             }
 
-            let query = "\(street), \(article.cityName), Deutschland"
+            let query = "\(hint), \(article.cityName), Deutschland"
             if let coordinate = await geocode(query),
                Self.isPlausible(coordinate, near: center) {
                 coords[article.id] = Coordinate(coordinate)
@@ -114,20 +114,39 @@ final class IncidentMapModel: ObservableObject {
         return a.distance(from: b) < 30_000 // within 30 km of the city centre
     }
 
-    /// Finds the first street-like token in the article text.
-    private static let streetRegex = try! NSRegularExpression(
-        pattern: "([A-ZÄÖÜ][\\wäöüßA-Za-z-]*(?:straße|strasse|str\\.|platz|weg|allee|ring|damm|gasse|ufer|brücke))"
-    )
-
-    static func street(in article: Article) -> String? {
+    /// Tries to find a geocodable location hint in the article text, most
+    /// precise first: a street name, then a Gelsenkirchen district, then a
+    /// landmark. Returns `nil` when nothing recognisable is found.
+    static func locationHint(in article: Article) -> String? {
         let text = article.title + ". " + article.summary
+        for regex in [streetRegex, districtRegex, landmarkRegex] {
+            if let hint = firstMatch(regex, in: text) { return hint }
+        }
+        return nil
+    }
+
+    private static func firstMatch(_ regex: NSRegularExpression, in text: String) -> String? {
         let range = NSRange(text.startIndex..., in: text)
-        guard let match = streetRegex.firstMatch(in: text, range: range),
+        guard let match = regex.firstMatch(in: text, range: range),
               let matchRange = Range(match.range(at: 1), in: text) else {
             return nil
         }
         return String(text[matchRange])
     }
+
+    private static let streetRegex = try! NSRegularExpression(
+        pattern: "([A-ZÄÖÜ][\\wäöüßA-Za-z-]*(?:straße|strasse|str\\.|platz|weg|allee|ring|damm|gasse|ufer|brücke))"
+    )
+
+    // Gelsenkirchen districts, compound names first so e.g. "Schalke-Nord"
+    // wins over "Schalke".
+    private static let districtRegex = try! NSRegularExpression(
+        pattern: "\\b(Bulmke-Hüllen|Schalke-Nord|Resser Mark|Ückendorf|Rotthausen|Beckhausen|Scholven|Altstadt|Neustadt|Feldmark|Bismarck|Schalke|Heßler|Hassel|Buer|Erle|Resse|Horst|Hüllen)\\b"
+    )
+
+    private static let landmarkRegex = try! NSRegularExpression(
+        pattern: "\\b(Hauptbahnhof|Bahnhof)\\b"
+    )
 
     /// Approximate city centres. Keep ids in sync with `City.catalog`.
     static let cityCenters: [String: CLLocationCoordinate2D] = [

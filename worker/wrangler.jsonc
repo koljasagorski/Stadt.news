@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "gelsenkirchen-news",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-01",
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+  "kv_namespaces": [
+    {
+      "binding": "NEWS",
+      "id": "a6088fbf86fb4ca2ab2c9342a89d4c51"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

@@ -16,13 +16,16 @@ final class NewsFeedViewModel: ObservableObject {
     @Published private(set) var lastUpdated: Date?
 
     private let service: NewsService
+    private let cache: FeedCache
 
-    init(service: NewsService = .shared) {
+    init(service: NewsService = .shared, cache: FeedCache = .shared) {
         self.service = service
+        self.cache = cache
     }
 
-    /// Loads the feed. On the first load this shows a loading state; later
-    /// loads (and pull-to-refresh) keep the existing articles visible.
+    /// Loads the feed. On the first load the cached feed is shown instantly
+    /// (if present) and refreshed in the background; otherwise a loading state
+    /// is shown. Pull-to-refresh keeps the existing articles visible.
     func load(cities: [City]) async {
         guard !cities.isEmpty else {
             articles = []
@@ -32,7 +35,14 @@ final class NewsFeedViewModel: ObservableObject {
         }
 
         if articles.isEmpty {
-            phase = .loading
+            let cityIDs = Set(cities.map(\.id))
+            let cached = cache.load().filter { cityIDs.contains($0.cityID) }
+            if cached.isEmpty {
+                phase = .loading
+            } else {
+                articles = cached
+                phase = .loaded
+            }
         }
 
         let result = await service.feed(for: cities)
@@ -57,6 +67,9 @@ final class NewsFeedViewModel: ObservableObject {
         failedCities = result.failedCities
         lastUpdated = Date()
         phase = .loaded
+
+        let toCache = result.articles
+        Task.detached { [cache] in cache.save(toCache) }
     }
 
     func refresh(cities: [City]) async {

@@ -65,6 +65,11 @@ final class NewsService: Sendable {
     func feed(for cities: [City]) async -> FeedResult {
         guard !cities.isEmpty else { return FeedResult(articles: [], failedCities: []) }
 
+        // Prefer the prebuilt backend feed; fall back to direct RSS on failure.
+        if let remote = await RemoteFeedService.shared.feed(for: cities) {
+            return remote
+        }
+
         let outcomes = await withTaskGroup(of: CityOutcome.self) { group -> [CityOutcome] in
             for city in cities {
                 group.addTask {
