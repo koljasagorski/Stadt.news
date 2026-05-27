@@ -88,7 +88,10 @@ export default {
         body = JSON.stringify(feed);
       }
       const etag = `"${hash(body)}"`;
-      if (request.headers.get("If-None-Match") === etag) {
+      // Cloudflare's edge may rewrite the ETag to a weak one (W/"…") when it
+      // compresses, so normalise the client's value before comparing.
+      const ifNoneMatch = request.headers.get("If-None-Match")?.replace(/^W\//, "");
+      if (ifNoneMatch === etag) {
         return new Response(null, { status: 304, headers: corsHeaders(etag) });
       }
       return new Response(body, { headers: corsHeaders(etag) });
