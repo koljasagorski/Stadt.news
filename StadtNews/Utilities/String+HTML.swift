@@ -49,31 +49,20 @@ extension String {
         return String(self[range.upperBound...]).trimmingCharacters(in: .whitespaces)
     }
 
-    /// Splits a press release into its main body and the trailing contact /
-    /// attribution block ("Rückfragen bitte an", "Original-Content von", …).
-    func splittingBodyAndFooter() -> (body: String, footer: String?) {
-        let markers = [
-            "Rückfragen bitte an",
-            "Rückfragen und Kontakt",
-            "Nachfragen für Journalist",
-            "Pressekontakt",
-            "Original-Content von",
-        ]
-
-        var cut: String.Index?
-        for marker in markers {
-            if let range = self.range(of: marker, options: [.caseInsensitive]) {
-                if cut == nil || range.lowerBound < cut! {
-                    cut = range.lowerBound
-                }
-            }
+    /// Removes a leading press dateline such as "Gelsenkirchen (ots) - " so the
+    /// teaser starts with the actual content.
+    func removingDatelinePrefix() -> String {
+        guard let range = self.range(of: "(ots)"),
+              distance(from: startIndex, to: range.lowerBound) <= 40 else {
+            return self
         }
-
-        guard let cut else { return (self, nil) }
-
-        let body = String(self[..<cut]).trimmingCharacters(in: .whitespacesAndNewlines)
-        let footer = String(self[cut...]).trimmingCharacters(in: .whitespacesAndNewlines)
-        return (body.isEmpty ? self : body, footer.isEmpty ? nil : footer)
+        var rest = self[range.upperBound...]
+        while let first = rest.first,
+              first == " " || first == "-" || first == "–" || first == ":" || first == "\u{00A0}" {
+            rest = rest.dropFirst()
+        }
+        let result = String(rest).trimmingCharacters(in: .whitespaces)
+        return result.isEmpty ? self : result
     }
 
     /// Decodes the HTML entities commonly seen in German press feeds,

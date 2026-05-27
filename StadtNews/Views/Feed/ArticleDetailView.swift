@@ -1,9 +1,14 @@
 import SwiftUI
 
 struct ArticleDetailView: View {
-    let article: Article
-
+    @StateObject private var viewModel: ArticleDetailViewModel
     @State private var showingSafari = false
+
+    init(article: Article) {
+        _viewModel = StateObject(wrappedValue: ArticleDetailViewModel(article: article))
+    }
+
+    private var article: Article { viewModel.article }
 
     var body: some View {
         ScrollView {
@@ -12,9 +17,15 @@ struct ArticleDetailView: View {
 
                 Hairline()
 
-                body(for: article)
+                bodyView
 
-                if let contact = article.contact {
+                if viewModel.isLoading {
+                    loadingRow
+                } else if viewModel.loadFailed && !viewModel.loadedFull {
+                    failureNote
+                }
+
+                if let contact = viewModel.contact {
                     contactBlock(contact)
                 }
 
@@ -38,6 +49,9 @@ struct ArticleDetailView: View {
                         .foregroundStyle(Theme.Color.ink)
                 }
             }
+        }
+        .task {
+            await viewModel.loadFullContent()
         }
         .sheet(isPresented: $showingSafari) {
             SafariView(url: article.url)
@@ -70,10 +84,19 @@ struct ArticleDetailView: View {
     }
 
     @ViewBuilder
-    private func body(for article: Article) -> some View {
-        if article.hasBody {
+    private var bodyView: some View {
+        if viewModel.paragraphs.isEmpty && viewModel.isLoading {
+            // No teaser available – show placeholder lines while loading.
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                ForEach(0..<4, id: \.self) { _ in
+                    Text("Platzhalter Textzeile für die Meldung")
+                        .font(Theme.Font.articleBody)
+                        .redacted(reason: .placeholder)
+                }
+            }
+        } else {
             VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-                ForEach(Array(article.paragraphs.enumerated()), id: \.offset) { _, paragraph in
+                ForEach(Array(viewModel.paragraphs.enumerated()), id: \.offset) { _, paragraph in
                     Text(paragraph)
                         .font(Theme.Font.articleBody)
                         .foregroundStyle(Theme.Color.ink)
@@ -81,13 +104,24 @@ struct ArticleDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-        } else if !article.summary.isEmpty {
-            Text(article.summary)
-                .font(Theme.Font.lead)
-                .foregroundStyle(Theme.Color.ink)
-                .lineSpacing(6)
-                .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private var loadingRow: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            ProgressView()
+            Text("Vollständige Meldung wird geladen …")
+                .font(Theme.Font.meta)
+                .foregroundStyle(Theme.Color.tertiaryInk)
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+    }
+
+    private var failureNote: some View {
+        Text("Die vollständige Meldung konnte nicht geladen werden. Sie können sie im Original lesen.")
+            .font(Theme.Font.meta)
+            .foregroundStyle(Theme.Color.tertiaryInk)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func contactBlock(_ contact: String) -> some View {
