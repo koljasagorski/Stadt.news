@@ -48,6 +48,12 @@ const SOURCES: Source[] = [
     source: "Polizei Gelsenkirchen",
     feedURL: "https://www.presseportal.de/rss/dienststelle_51056.rss2",
   },
+  {
+    cityID: "51056",
+    cityName: "Gelsenkirchen",
+    source: "Feuerwehr Gelsenkirchen",
+    feedURL: "https://www.presseportal.de/rss/dienststelle_116260.rss2",
+  },
 ];
 
 const FEED_KEY = "feed:v1";
