@@ -1,8 +1,8 @@
 # Gelsenkirchen.news
 
-Native iOS-App (SwiftUI, iOS 17+), die offizielle Polizeimeldungen aus dem
-Presseportal-„Blaulicht" für **Gelsenkirchen** bündelt — als schnell lesbarer,
-redaktionell gestalteter Feed.
+Native iOS-App (SwiftUI, iOS 17+), die offizielle Meldungen aus **Gelsenkirchen**
+bündelt — Polizei und Feuerwehr (Presseportal-„Blaulicht") sowie Pressemeldungen
+der Stadt — als schnell lesbarer, redaktionell gestalteter Feed.
 
 ## Funktionen
 - **Feed** der aktuellen Meldungen mit Pull-to-Refresh und Lade-/Fehlerzuständen
@@ -10,7 +10,7 @@ redaktionell gestalteter Feed.
 - **Artikel-Detail** mit Volltext, der von der Original-Artikelseite nachgeladen wird; Teilen und „Im Original lesen"
 - **Karten-Ansicht**: Meldungen mit erkennbarem Ort als Pins (Best-Effort-Geocoding aus Straßennamen/Stadtteilen)
 - **Lesezeichen** („Gemerkt"): Meldungen speichern und in einer eigenen Liste wiederfinden
-- **Push-Mitteilungen** bei neuen Meldungen (OneSignal + geplanter GitHub-Actions-Poller) — siehe Setup unten
+- **Push-Mitteilungen** bei neuen Meldungen (OneSignal, ausgelöst vom Cloudflare-Worker) — siehe Setup unten
 - Hell-/Dunkelmodus
 
 ## Projektstruktur
@@ -24,8 +24,7 @@ StadtNews/
   Views/          Feed, Map, Settings, Support, RootView, MainView
   DesignSystem/   Theme, Components (u. a. Masthead/Wortmarke)
   Utilities/      String+HTML, DateParsing
-scripts/          news_push.py (Feed-Poller für Push)
-.github/workflows/news-push.yml (Zeitplan für den Poller)
+worker/           Cloudflare-Worker (Feed-Aggregation + Push-Auslösung)
 ```
 Das Xcode-Projekt nutzt eine synchronisierte Ordnergruppe — neue Dateien in
 `StadtNews/` werden automatisch eingebunden.
@@ -47,11 +46,14 @@ Push ist im Code vorbereitet, aber inaktiv, bis Folgendes eingerichtet ist:
 3. OneSignal-SDK in Xcode hinzufügen (`https://github.com/OneSignal/OneSignal-iOS-SDK`, Produkt `OneSignalFramework`)
 4. App ID in `StadtNews/Services/PushService.swift` eintragen
 5. Capabilities: Push Notifications + Background Modes → Remote notifications
-6. GitHub-Secrets: `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY`
+6. Worker-Secrets setzen (im Ordner `worker/`):
+   `npx wrangler secret put ONESIGNAL_APP_ID` und `… ONESIGNAL_REST_API_KEY`
+   (optional `ONESIGNAL_AUTH_SCHEME`, Default „Basic"; neuere OneSignal-Keys nutzen „Key")
 
-Der Poller (`scripts/news_push.py`) läuft per GitHub Actions zeitgesteuert, prüft
-den Feed und sendet für neue Meldungen eine Push über die OneSignal-REST-API.
-Ohne Secrets läuft er als „Dry Run" (sendet nichts).
+Der **Cloudflare-Worker** erkennt in seinem Cron-Lauf neue Meldungen und sendet
+dafür eine Push über die OneSignal-REST-API, gefiltert nach den Städte-Tags der
+Nutzer. Ohne gesetzte Secrets läuft das als „Dry Run" (sendet nichts); ohne
+Apple-APNs-Key in OneSignal erfolgt keine Zustellung an iOS-Geräte.
 
 ## Backend (optional, Cloudflare Worker)
 Unter [`worker/`](./worker) liegt ein Cloudflare-Worker, der die Feeds
@@ -69,12 +71,13 @@ npx wrangler kv namespace create NEWS   # die id in wrangler.jsonc eintragen
 npx wrangler deploy                      # die *.workers.dev-URL notieren
 ```
 Danach die URL in `StadtNews/Services/RemoteFeedService.swift` (`baseURL`)
-eintragen. Geocoding (Karte) und Push bleiben vorerst on-device bzw. beim
-GitHub-Poller.
+eintragen. Der Worker übernimmt auch die Push-Auslösung (siehe oben);
+Geocoding (Karte) bleibt on-device.
 
 ## Datenquelle
-Presseportal-RSS der Polizei Gelsenkirchen (news aktuell GmbH). Alle Rechte an
-den Inhalten verbleiben bei den jeweiligen Herausgebern.
+Presseportal-RSS von Polizei und Feuerwehr Gelsenkirchen (news aktuell GmbH)
+sowie der Presse-Newsfeed der Stadt Gelsenkirchen. Alle Rechte an den Inhalten
+verbleiben bei den jeweiligen Herausgebern.
 
 ## Roadmap
 Geplante Aufgaben und Architektur-Notizen (u. a. das geplante Cloudflare-Backend)

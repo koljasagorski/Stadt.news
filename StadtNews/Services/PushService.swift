@@ -54,7 +54,7 @@ final class PushService {
     }
 
     /// Mirrors the user's selected cities into OneSignal tags (`city_<id> = 1`),
-    /// so the GitHub poller can target only the cities a user follows.
+    /// so the backend worker can target only the cities a user follows.
     func syncCityTags(_ selectedCityIDs: [String]) {
         #if canImport(OneSignalFramework)
         guard Self.isConfigured else { return }

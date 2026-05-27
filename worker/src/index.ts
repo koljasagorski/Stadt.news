@@ -7,8 +7,9 @@
  *   first request if KV is still empty).
  *
  * The article shape mirrors the iOS app's `Article` model so the client can
- * decode it directly. Geocoding and push are intentionally NOT done here
- * (geocoding stays on-device; push stays with the GitHub poller).
+ * decode it directly. Geocoding stays on-device. Push notifications are sent
+ * from the cron run via OneSignal (see pushNewArticles) and only fire once the
+ * OneSignal credentials below are configured.
  *
  * Deploy (needs a Cloudflare account):
  *   cd worker && npm install
@@ -16,10 +17,19 @@
  *   npx wrangler kv namespace create NEWS   # paste the id into wrangler.jsonc
  *   npx wrangler deploy                      # note the *.workers.dev URL
  * Then put that URL into the app's RemoteFeedService.baseURL.
+ *
+ * Push (optional; needs a OneSignal app with an Apple APNs key uploaded there):
+ *   npx wrangler secret put ONESIGNAL_APP_ID
+ *   npx wrangler secret put ONESIGNAL_REST_API_KEY
+ *   # optional, default "Basic"; newer OneSignal keys use "Key":
+ *   npx wrangler secret put ONESIGNAL_AUTH_SCHEME
  */
 
 interface Env {
   NEWS: KVNamespace;
+  ONESIGNAL_APP_ID?: string;
+  ONESIGNAL_REST_API_KEY?: string;
+  ONESIGNAL_AUTH_SCHEME?: string;
 }
 
 interface Source {
@@ -69,9 +79,13 @@ const FEED_KEY = "feed:v1";
 const USER_AGENT = "Gelsenkirchen.news-worker/1.0 (+https://github.com/koljasagorski/stadt.news)";
 const MAX_ARTICLES = 100;
 
+const ONESIGNAL_API = "https://onesignal.com/api/v1/notifications";
+const PUSH_FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_PUSH_PER_RUN = 6;
+
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(rebuild(env));
+    ctx.waitUntil(refresh(env));
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -124,6 +138,84 @@ async function rebuild(env: Env): Promise<{ version: number; updatedAt: string; 
   };
   await env.NEWS.put(FEED_KEY, JSON.stringify(feed));
   return feed;
+}
+
+/** Cron path: rebuild the feed and push notifications for newly added articles. */
+async function refresh(env: Env): Promise<void> {
+  const previous = await env.NEWS.get(FEED_KEY);
+  const feed = await rebuild(env);
+  await pushNewArticles(env, previous, feed.articles);
+}
+
+// MARK: - Push (OneSignal)
+
+/**
+ * Sends a OneSignal push for each article that is new since the previous feed.
+ * Runs as a no-op until ONESIGNAL_APP_ID + ONESIGNAL_REST_API_KEY are set, and
+ * skips the very first run (no previous feed) so existing articles are never
+ * blasted out. OneSignal targets only devices tagged for the article's city.
+ */
+async function pushNewArticles(env: Env, previousRaw: string | null, articles: Article[]): Promise<void> {
+  const appId = (env.ONESIGNAL_APP_ID ?? "").trim();
+  const apiKey = (env.ONESIGNAL_REST_API_KEY ?? "").trim();
+  if (!appId || !apiKey) {
+    console.log("push: dry run (OneSignal credentials not set)");
+    return;
+  }
+  if (!previousRaw) {
+    console.log("push: seeding run, nothing sent");
+    return;
+  }
+
+  let previousIds: Set<string>;
+  try {
+    const prev = JSON.parse(previousRaw) as { articles: Article[] };
+    previousIds = new Set(prev.articles.map((a) => a.id));
+  } catch {
+    return;
+  }
+
+  const now = Date.now();
+  const fresh = articles.filter(
+    (a) =>
+      !previousIds.has(a.id) &&
+      a.publishedAt !== undefined &&
+      now - Date.parse(a.publishedAt) < PUSH_FRESH_WINDOW_MS,
+  );
+
+  const scheme = (env.ONESIGNAL_AUTH_SCHEME ?? "Basic").trim() || "Basic";
+  for (const article of fresh.slice(0, MAX_PUSH_PER_RUN)) {
+    await sendPush(appId, apiKey, scheme, article);
+  }
+}
+
+async function sendPush(appId: string, apiKey: string, scheme: string, article: Article): Promise<void> {
+  const payload = {
+    app_id: appId,
+    headings: { en: article.source, de: article.source },
+    contents: { en: article.title, de: article.title },
+    filters: [{ field: "tag", key: `city_${article.cityID}`, relation: "=", value: "1" }],
+    url: article.url,
+    data: { city_id: article.cityID, article_url: article.url, source: article.source },
+  };
+  try {
+    const res = await fetch(ONESIGNAL_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        Authorization: `${scheme} ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = (await res.json()) as { id?: string; recipients?: number; errors?: unknown };
+    if (result.errors) {
+      console.log("push: OneSignal returned", JSON.stringify(result.errors));
+    } else {
+      console.log(`push: sent ${result.id ?? "?"} to ${result.recipients ?? "?"} recipients`);
+    }
+  } catch (err) {
+    console.log("push: send failed", err);
+  }
 }
 
 // MARK: - Fetching

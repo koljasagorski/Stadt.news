@@ -13,18 +13,18 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Feed (Gelsenkirchen), Pull-to-Refresh, Skeleton-/Fehlerzustände
 - [x] Artikel-Detail mit Volltext (von der Artikelseite nachgeladen), Teilen, „Im Original lesen"
 - [x] Karten-Ansicht (MapKit) mit Best-Effort-Geocoding aus Straßennamen (`CLGeocoder`, in `UserDefaults` gecacht)
-- [x] Push: OneSignal-Wrapper (`PushService`, mit `#if canImport` build-sicher), Einstellungen-Schalter, Städte-Tags; GitHub-Actions-Poller (`scripts/news_push.py`)
+- [x] Push: OneSignal-Wrapper (`PushService`, mit `#if canImport` build-sicher), Einstellungen-Schalter, Städte-Tags; Auslösung im Cloudflare-Worker (OneSignal-REST-API)
 - [x] Rebrand auf „Gelsenkirchen.news"; Onboarding entfernt; Einstellungen verschlankt
 - [x] Lokaler Feed-Cache (Instant-Start, offline) — `FeedCache`, `Article: Codable`, in `NewsFeedViewModel` integriert
 - [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
 - [x] Lesezeichen („Gemerkt") — `BookmarkStore`, Detail-Button, `BookmarksView`
 - [x] Cloudflare-Worker (`worker/`) deployed, aggregiert Polizei + Feuerwehr + Stadt Gelsenkirchen (RSS + Atom); App liest ihn via `RemoteFeedService` mit RSS-Fallback
 - [x] `README.md` angelegt
-- PRs: #1 (Push + Karte) gemergt; #3 (Rebrand + Folgearbeiten) offen
+- PRs: #1 (Push + Karte) und #3 (Rebrand) gemergt; #5 (Cloudflare-Backend) offen
 
 ## Entscheidungen (getroffen)
 - [x] Geocoding bleibt **on-device** (Worker macht kein Geocoding)
-- [x] Push bleibt vorerst beim **GitHub-Poller** (Worker macht kein Push)
+- [x] Push läuft über den **Cloudflare-Worker** (OneSignal-REST-API); GitHub-Poller entfernt
 - [x] Worker-Sprache: **TypeScript**
 - [x] API-Hosting: Start auf **`*.workers.dev`**
 - [ ] Home-Screen-Name: „Gelsenkirchen.news" (wird evtl. abgeschnitten) oder „GE.news"? (noch offen)
@@ -38,12 +38,13 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - Hinweis: In Xcode bauen/ausführen und prüfen, dass der Start jetzt sofort Inhalt zeigt (hier nicht testbar, kein Xcode).
 
 ## 2. Push scharfschalten (Betreiber-Setup, teils kein Code)
-- [ ] OneSignal-Konto + App anlegen (App ID + REST API Key)
-- [ ] Apple Developer Program; APNs-Schlüssel (.p8) erzeugen und in OneSignal hinterlegen
+- [x] OneSignal-Konto + App anlegen (App ID + REST API Key) — vorhanden
+- [ ] **Apple Developer Program; APNs-Schlüssel (.p8) erzeugen und in OneSignal hinterlegen** ← gating für die Zustellung an iOS
 - [ ] OneSignal-SDK in Xcode hinzufügen (`https://github.com/OneSignal/OneSignal-iOS-SDK`, Produkt `OneSignalFramework`)
 - [ ] `appID` in `StadtNews/Services/PushService.swift` eintragen
 - [ ] Capabilities: Push Notifications + Background Modes → Remote notifications
-- [ ] GitHub-Secrets: `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY` (optional `ONESIGNAL_AUTH_SCHEME=Key`)
+- [ ] Worker-Secrets: `wrangler secret put ONESIGNAL_APP_ID` + `ONESIGNAL_REST_API_KEY` (optional `ONESIGNAL_AUTH_SCHEME`, Default „Basic", neuere Keys „Key")
+- [x] Auslösung gebaut: Worker erkennt neue Artikel im Cron und sendet via OneSignal (Dry-Run ohne Secret, kein Versand älterer/seeding-Artikel)
 - [ ] Optional: Tippen auf Push öffnet den Artikel in der App (Deeplink) statt im Browser
 
 ## 3. Cloudflare-Backend (Aggregations- + Cache-Schicht)
@@ -52,7 +53,7 @@ Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vo
 - [x] **Phase 2 (begonnen):** Quellen über `SOURCES`-Array + `format` (`rss`/`atom`) → neue Quellen rein serverseitig. Drin: Polizei, Feuerwehr, Stadt GE. Neue Quelle = `SOURCES` erweitern + `wrangler deploy` (kein App-Release).
   - Bei Worker-Änderungen muss der Betreiber `cd worker && wrangler deploy` ausführen.
 - [ ] **Phase 3:** (verworfen, falls Geocoding on-device bleibt) — sonst Geocoding in den Worker verlagern
-- [ ] **Phase 4:** (optional) Push in den Worker integrieren; GitHub-Poller abschalten
+- [x] **Phase 4:** Push im Worker integriert (OneSignal-REST-API, neue Artikel im Cron); GitHub-Poller entfernt
 - Beachten: Free-Tier = 50 externe Subrequests pro Aufruf → bei vielen Quellen begrenzen.
 - Tooling: Wrangler, Worker-Code in `worker/`.
 
@@ -65,7 +66,7 @@ Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vo
 ## 5. Feature-Backlog (nach Nutzen)
 - [~] **Bilder/Fotos** — geprüft: Polizei-Feeds enthalten praktisch keine Bilder (kein `enclosure`/`media:content`, nur vereinzelt `<img>`). Für diese Quelle nicht lohnend; **erst sinnvoll, wenn weitere Quellen mit Bildern dazukommen** (Punkt 4).
 - [x] **Lesezeichen** („Gemerkt"): `BookmarkStore` (persistiert), Bookmark-Button in der Detailansicht, Liste (`BookmarksView`), Zugang per Symbol in der Feed-Leiste
-- [ ] **Stichwort-/Stadtteil-Alarm** für Push (baut auf Poller/Worker auf)
+- [ ] **Stichwort-/Stadtteil-Alarm** für Push (baut auf dem Worker auf)
 - [ ] **Story-Format** (durch Top-Schlagzeilen swipen)
 - [ ] **Vorlesen/Audio** (`AVSpeechSynthesizer`)
 - [ ] **Home-Screen-Widget** (WidgetKit, neueste Schlagzeile)
