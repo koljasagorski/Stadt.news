@@ -18,6 +18,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 citiesSection
+                notificationsSection
                 aboutSection
             }
             .listStyle(.insetGrouped)
@@ -77,6 +78,22 @@ struct SettingsView: View {
         .buttonStyle(.plain)
         .disabled(isLast)
         .listRowBackground(Theme.Color.surface)
+    }
+
+    private var notificationsSection: some View {
+        Section {
+            Toggle(isOn: $settings.pushEnabled) {
+                Text("Push bei neuen Meldungen")
+                    .font(.system(.body, design: .serif).weight(.semibold))
+                    .foregroundStyle(Theme.Color.ink)
+            }
+            .tint(Theme.Color.brand)
+            .listRowBackground(Theme.Color.surface)
+        } header: {
+            Text("Mitteilungen")
+        } footer: {
+            Text("Erhalten Sie eine Mitteilung, sobald in Ihren Städten eine neue Meldung erscheint. Sie können dies jederzeit ändern.")
+        }
     }
 
     private var aboutSection: some View {

@@ -3,6 +3,7 @@ import SwiftUI
 struct MainView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var showingSettings = false
+    @State private var showingMap = false
 
     var body: some View {
         NavigationStack {
@@ -12,6 +13,15 @@ struct MainView: View {
                 }
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            showingMap = true
+                        } label: {
+                            Image(systemName: "map")
+                                .foregroundStyle(Theme.Color.ink)
+                        }
+                        .accessibilityLabel("Karte")
+                    }
                     ToolbarItem(placement: .principal) {
                         Masthead(compact: true)
                     }
@@ -31,6 +41,9 @@ struct MainView: View {
         .tint(Theme.Color.brand)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+        }
+        .sheet(isPresented: $showingMap) {
+            IncidentMapView(cities: settings.selectedCities)
         }
     }
 }

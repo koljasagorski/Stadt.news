@@ -1,0 +1,53 @@
+name: News Push
+
+# Prüft regelmäßig die Presseportal-Feeds und schickt für neue Meldungen
+# eine Push-Nachricht über OneSignal.
+#
+# Hinweis: Geplante Workflows laufen nur auf dem Standard-Branch (main) und
+# erst, nachdem dieser Branch dort gemergt wurde. Bis die Secrets
+# ONESIGNAL_APP_ID und ONESIGNAL_REST_API_KEY gesetzt sind, läuft das Skript
+# im "Dry Run" (es wird nichts gesendet).
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # alle 15 Min. (GitHub: Best-Effort, kann sich verzögern)
+  workflow_dispatch: {}        # erlaubt manuelles Starten im Actions-Tab
+
+concurrency:
+  group: news-push
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Stand wiederherstellen
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: news-push-state-${{ github.run_id }}
+          restore-keys: |
+            news-push-state-
+
+      - name: Feeds prüfen und senden
+        env:
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
+          ONESIGNAL_AUTH_SCHEME: ${{ secrets.ONESIGNAL_AUTH_SCHEME }}
+        run: python scripts/news_push.py
+
+      - name: Stand speichern
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: news-push-state-${{ github.run_id }}
