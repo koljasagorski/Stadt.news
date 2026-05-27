@@ -10,7 +10,7 @@ final class RemoteFeedService: Sendable {
 
     /// Deployed worker URL, e.g. "https://gelsenkirchen-news.<subdomain>.workers.dev".
     /// Leave empty to keep using the on-device RSS path.
-    static let baseURL = ""
+    static let baseURL = "https://gelsenkirchen-news.vwcampermieten.workers.dev"
 
     private let session: URLSession
 
