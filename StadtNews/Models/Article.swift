@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The feed only carries a short teaser; the full text is loaded on demand
 /// from the article page (see `ArticleContentService`).
-struct Article: Identifiable, Hashable, Sendable {
+struct Article: Identifiable, Hashable, Sendable, Codable {
     let id: String
     /// Display headline with the "POL-XX:" press code removed.
     let title: String
