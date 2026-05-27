@@ -132,15 +132,6 @@ final class IncidentMapModel: ObservableObject {
     /// Approximate city centres. Keep ids in sync with `City.catalog`.
     static let cityCenters: [String: CLLocationCoordinate2D] = [
         "51056": .init(latitude: 51.5177, longitude: 7.0857), // Gelsenkirchen
-        "4971":  .init(latitude: 51.5136, longitude: 7.4653), // Dortmund
-        "11562": .init(latitude: 51.4556, longitude: 7.0116), // Essen
-        "11530": .init(latitude: 51.4818, longitude: 7.2162), // Bochum
-        "50510": .init(latitude: 51.4344, longitude: 6.7623), // Duisburg
-        "13248": .init(latitude: 51.2277, longitude: 6.7735), // Düsseldorf
-        "12415": .init(latitude: 50.9375, longitude: 6.9603), // Köln
-        "11187": .init(latitude: 51.9607, longitude: 7.6261), // Münster
-        "12522": .init(latitude: 52.0302, longitude: 8.5325), // Bielefeld
-        "11811": .init(latitude: 51.2562, longitude: 7.1508), // Wuppertal
     ]
 
     static func region(for cities: [City]) -> MKCoordinateRegion {

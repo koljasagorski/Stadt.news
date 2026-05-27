@@ -26,20 +26,11 @@ from email.utils import parsedate_to_datetime
 # Keep in sync with StadtNews/Models/City.swift (id -> display name).
 CITIES = {
     "51056": "Gelsenkirchen",
-    "4971": "Dortmund",
-    "11562": "Essen",
-    "11530": "Bochum",
-    "50510": "Duisburg",
-    "13248": "Düsseldorf",
-    "12415": "Köln",
-    "11187": "Münster",
-    "12522": "Bielefeld",
-    "11811": "Wuppertal",
 }
 
 FEED_URL = "https://www.presseportal.de/rss/dienststelle_{}.rss2"
 ONESIGNAL_API = "https://onesignal.com/api/v1/notifications"
-USER_AGENT = "Stadt.news-push/1.0 (+https://github.com/koljasagorski/stadt.news)"
+USER_AGENT = "Gelsenkirchen.news-push/1.0 (+https://github.com/koljasagorski/stadt.news)"
 STATE_FILE = os.environ.get("STATE_FILE", "state/seen.json")
 
 MAX_PER_CITY = 5                      # never send more than this per city per run
