@@ -27,6 +27,7 @@ interface Source {
   cityName: string;
   source: string;
   feedURL: string;
+  format?: "rss" | "atom";
 }
 
 interface Article {
@@ -53,6 +54,14 @@ const SOURCES: Source[] = [
     cityName: "Gelsenkirchen",
     source: "Feuerwehr Gelsenkirchen",
     feedURL: "https://www.presseportal.de/rss/dienststelle_116260.rss2",
+  },
+  {
+    cityID: "51056",
+    cityName: "Gelsenkirchen",
+    source: "Stadt Gelsenkirchen",
+    feedURL:
+      "https://www.gelsenkirchen.de/de/_funktionsnavigation/presse/pressemeldungen/newsfeed/bereich/4-presse",
+    format: "atom",
   },
 ];
 
@@ -130,6 +139,10 @@ async function fetchText(url: string): Promise<string> {
 // MARK: - RSS parsing
 
 function parseFeed(xml: string, src: Source): Article[] {
+  return src.format === "atom" ? parseAtom(xml, src) : parseRss(xml, src);
+}
+
+function parseRss(xml: string, src: Source): Article[] {
   const items = xml.match(/<item\b[\s\S]*?<\/item>/g) ?? [];
   const articles: Article[] = [];
   for (const item of items) {
@@ -140,12 +153,36 @@ function parseFeed(xml: string, src: Source): Article[] {
     const title = stripPressCode(htmlToText(field(item, "title")));
     if (!title) continue;
 
-    const summary = stripDateline(htmlToText(field(item, "description")));
-    const pubDate = field(item, "pubDate");
-    const published = parseDate(pubDate);
-
     articles.push({
       id: guid,
+      title,
+      summary: stripDateline(htmlToText(field(item, "description"))),
+      url: link,
+      publishedAt: parseDate(field(item, "pubDate")),
+      cityID: src.cityID,
+      cityName: src.cityName,
+      source: src.source,
+    });
+  }
+  return articles;
+}
+
+function parseAtom(xml: string, src: Source): Article[] {
+  const entries = xml.match(/<entry\b[\s\S]*?<\/entry>/g) ?? [];
+  const articles: Article[] = [];
+  for (const entry of entries) {
+    const link = atomLink(entry) || field(entry, "id");
+    const id = field(entry, "id") || link;
+    if (!link || !id) continue;
+
+    const title = stripPressCode(htmlToText(field(entry, "title")));
+    if (!title) continue;
+
+    const summary = stripDateline(htmlToText(field(entry, "summary") || field(entry, "content")));
+    const published = parseDate(field(entry, "published") || field(entry, "updated"));
+
+    articles.push({
+      id,
       title,
       summary,
       url: link,
@@ -156,6 +193,18 @@ function parseFeed(xml: string, src: Source): Article[] {
     });
   }
   return articles;
+}
+
+/** Atom: the article URL lives in a <link href="…"> attribute, not in text. */
+function atomLink(block: string): string {
+  const re = /<link\b([^>]*?)\/?>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(block))) {
+    const rel = match[1].match(/\brel="([^"]*)"/)?.[1];
+    const href = match[1].match(/\bhref="([^"]*)"/)?.[1];
+    if (href && rel !== "self") return href;
+  }
+  return "";
 }
 
 function field(block: string, tag: string): string {
@@ -202,12 +251,13 @@ function stripPressCode(title: string): string {
   return cleaned || title;
 }
 
-/** Drops a leading dateline like "Gelsenkirchen (ots) - ". */
+/** Drops a leading dateline like "Gelsenkirchen (ots) - " or the city's "GE. ". */
 function stripDateline(summary: string): string {
-  const index = summary.indexOf("(ots)");
-  if (index < 0 || index > 40) return summary;
-  const rest = summary.slice(index + "(ots)".length).replace(/^[\s\-–:·]+/, "").trim();
-  return rest || summary;
+  const s = summary.replace(/^GE\.\s+/, "");
+  const index = s.indexOf("(ots)");
+  if (index < 0 || index > 40) return s;
+  const rest = s.slice(index + "(ots)".length).replace(/^[\s\-–:·]+/, "").trim();
+  return rest || s;
 }
 
 // MARK: - HTTP helpers
