@@ -15,7 +15,10 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Karten-Ansicht (MapKit) mit Best-Effort-Geocoding aus Straßennamen (`CLGeocoder`, in `UserDefaults` gecacht)
 - [x] Push: OneSignal-Wrapper (`PushService`, mit `#if canImport` build-sicher), Einstellungen-Schalter, Städte-Tags; GitHub-Actions-Poller (`scripts/news_push.py`)
 - [x] Rebrand auf „Gelsenkirchen.news"; Onboarding entfernt; Einstellungen verschlankt
-- PRs: #1 (Push + Karte) gemergt; #3 (Rebrand) offen
+- [x] Lokaler Feed-Cache (Instant-Start, offline) — `FeedCache`, `Article: Codable`, in `NewsFeedViewModel` integriert
+- [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
+- [x] `README.md` angelegt
+- PRs: #1 (Push + Karte) gemergt; #3 (Rebrand + Folgearbeiten) offen
 
 ## Offene Entscheidungen (vor Umsetzung klären)
 - [ ] Geocoding serverseitig: Nominatim (gratis, ToS/Rate-Limit) vs. weiter on-device vs. bezahlt (Mapbox/Google)?
@@ -26,13 +29,11 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 
 ---
 
-## 1. Performance: lokaler Cache (Instant-Start) — HÖCHSTE PRIORITÄT
-Problem: Der Feed wird beim Start kalt übers Netz geladen/geparst; es gibt keinen Cache → der Start fühlt sich langsam an.
-- [ ] Letzten Feed lokal persistieren (JSON auf Disk oder `UserDefaults`)
-- [ ] Beim Start sofort den gecachten Stand zeigen, dann im Hintergrund aktualisieren
-- [ ] `Article` um `Codable` erweitern (für Persistenz)
-- Dateien: `StadtNews/ViewModels/NewsFeedViewModel.swift`, `StadtNews/Services/NewsService.swift` (oder neuer `FeedCache`), `StadtNews/Models/Article.swift`
-- Fertig, wenn: Neustart die letzten Meldungen sofort zeigt und danach aktualisiert (auch offline nutzbar).
+## 1. Performance: lokaler Cache (Instant-Start) — ERLEDIGT
+- [x] Letzten Feed lokal persistieren (JSON auf Disk) → `StadtNews/Services/FeedCache.swift`
+- [x] Beim Start sofort den gecachten Stand zeigen, dann im Hintergrund aktualisieren → `NewsFeedViewModel`
+- [x] `Article` um `Codable` erweitert
+- Hinweis: In Xcode bauen/ausführen und prüfen, dass der Start jetzt sofort Inhalt zeigt (hier nicht testbar, kein Xcode).
 
 ## 2. Push scharfschalten (Betreiber-Setup, teils kein Code)
 - [ ] OneSignal-Konto + App anlegen (App ID + REST API Key)
@@ -77,6 +78,6 @@ Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vo
 - [ ] Offline-Zustand sauber anzeigen (greift mit Punkt 1)
 
 ## 7. Karten-Heuristik verbessern
-- Aktuell bekommen ~28 % der Meldungen einen präzisen Pin (Straßennamen-Erkennung in `IncidentMapModel.street(in:)`).
-- [ ] Mehr Muster: Stadtteile (GE-spezifische Liste), Bundesstraßen (`B\d+`), markante Orte (Bahnhof, Plätze)
-- [ ] Fehltreffer weiter reduzieren; ggf. serverseitiges Geocoding (Punkt 3 Phase 3) bevorzugen
+- [x] Mehr Muster: GE-Stadtteile + „Bahnhof" ergänzt (`IncidentMapModel.locationHint(in:)`); Trefferquote im Test 6/15 → 12/15
+- [ ] Optional: Bundesstraßen/Autobahnen (`A/B \d`) — bewusst weggelassen wegen Fehltreffer-Risiko; nur mit Validierung ergänzen
+- [ ] Fehltreffer weiter reduzieren; mittelfristig serverseitiges Geocoding (Punkt 3 Phase 3) bevorzugen
