@@ -4,6 +4,7 @@ struct MainView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var showingSettings = false
     @State private var showingMap = false
+    @State private var showingBookmarks = false
 
     var body: some View {
         NavigationStack {
@@ -27,6 +28,15 @@ struct MainView: View {
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
+                            showingBookmarks = true
+                        } label: {
+                            Image(systemName: "bookmark")
+                                .foregroundStyle(Theme.Color.ink)
+                        }
+                        .accessibilityLabel("Gemerkte Meldungen")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
                             showingSettings = true
                         } label: {
                             Image(systemName: "slider.horizontal.3")
@@ -44,6 +54,9 @@ struct MainView: View {
         }
         .sheet(isPresented: $showingMap) {
             IncidentMapView(cities: settings.selectedCities)
+        }
+        .sheet(isPresented: $showingBookmarks) {
+            BookmarksView()
         }
     }
 }

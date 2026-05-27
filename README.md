@@ -9,6 +9,7 @@ redaktionell gestalteter Feed.
 - **Lokaler Cache**: der zuletzt geladene Feed wird beim Start sofort gezeigt und im Hintergrund aktualisiert (auch offline lesbar)
 - **Artikel-Detail** mit Volltext, der von der Original-Artikelseite nachgeladen wird; Teilen und „Im Original lesen"
 - **Karten-Ansicht**: Meldungen mit erkennbarem Ort als Pins (Best-Effort-Geocoding aus Straßennamen/Stadtteilen)
+- **Lesezeichen** („Gemerkt"): Meldungen speichern und in einer eigenen Liste wiederfinden
 - **Push-Mitteilungen** bei neuen Meldungen (OneSignal + geplanter GitHub-Actions-Poller) — siehe Setup unten
 - Hell-/Dunkelmodus
 

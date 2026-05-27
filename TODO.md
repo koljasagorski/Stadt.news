@@ -17,6 +17,7 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Rebrand auf „Gelsenkirchen.news"; Onboarding entfernt; Einstellungen verschlankt
 - [x] Lokaler Feed-Cache (Instant-Start, offline) — `FeedCache`, `Article: Codable`, in `NewsFeedViewModel` integriert
 - [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
+- [x] Lesezeichen („Gemerkt") — `BookmarkStore`, Detail-Button, `BookmarksView`
 - [x] `README.md` angelegt
 - PRs: #1 (Push + Karte) gemergt; #3 (Rebrand + Folgearbeiten) offen
 
@@ -60,8 +61,8 @@ Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vo
 - Ziel: neue Quelle = Adapter ergänzen, **kein App-Update**.
 
 ## 5. Feature-Backlog (nach Nutzen)
-- [ ] **Bilder/Fotos** im Feed und Artikelkopf (RSS-Enclosure/`og:image`; `AsyncImage`)
-- [ ] **Lesezeichen** („Gemerkt"): `Article` als `Codable` persistieren, Liste, Bookmark-Button in Detail/Reihe
+- [~] **Bilder/Fotos** — geprüft: Polizei-Feeds enthalten praktisch keine Bilder (kein `enclosure`/`media:content`, nur vereinzelt `<img>`). Für diese Quelle nicht lohnend; **erst sinnvoll, wenn weitere Quellen mit Bildern dazukommen** (Punkt 4).
+- [x] **Lesezeichen** („Gemerkt"): `BookmarkStore` (persistiert), Bookmark-Button in der Detailansicht, Liste (`BookmarksView`), Zugang per Symbol in der Feed-Leiste
 - [ ] **Stichwort-/Stadtteil-Alarm** für Push (baut auf Poller/Worker auf)
 - [ ] **Story-Format** (durch Top-Schlagzeilen swipen)
 - [ ] **Vorlesen/Audio** (`AVSpeechSynthesizer`)

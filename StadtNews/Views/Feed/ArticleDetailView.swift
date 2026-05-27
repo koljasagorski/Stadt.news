@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ArticleDetailView: View {
     @StateObject private var viewModel: ArticleDetailViewModel
+    @ObservedObject private var bookmarks = BookmarkStore.shared
     @State private var showingSafari = false
 
     init(article: Article) {
@@ -42,6 +43,15 @@ struct ArticleDetailView: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Masthead(compact: true)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    bookmarks.toggle(article)
+                } label: {
+                    Image(systemName: bookmarks.isBookmarked(article) ? "bookmark.fill" : "bookmark")
+                        .foregroundStyle(bookmarks.isBookmarked(article) ? Theme.Color.brand : Theme.Color.ink)
+                }
+                .accessibilityLabel(bookmarks.isBookmarked(article) ? "Lesezeichen entfernen" : "Merken")
             }
             ToolbarItem(placement: .topBarTrailing) {
                 ShareLink(item: article.url) {
