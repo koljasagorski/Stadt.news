@@ -36,6 +36,8 @@ interface Source {
   cityID: string;
   cityName: string;
   source: string;
+  /** Stable id used for per-source push tags (`src_<id>`) and client filtering. */
+  sourceID: string;
   feedURL: string;
   format?: "rss" | "atom";
 }
@@ -49,6 +51,10 @@ interface Article {
   cityID: string;
   cityName: string;
   source: string;
+  sourceID: string;
+  /** Full article text, attached on the cron path when extractable. */
+  body?: string[];
+  contact?: string;
 }
 
 // Keep in sync with the app's City catalog.
@@ -57,18 +63,21 @@ const SOURCES: Source[] = [
     cityID: "51056",
     cityName: "Gelsenkirchen",
     source: "Polizei Gelsenkirchen",
+    sourceID: "polizei",
     feedURL: "https://www.presseportal.de/rss/dienststelle_51056.rss2",
   },
   {
     cityID: "51056",
     cityName: "Gelsenkirchen",
     source: "Feuerwehr Gelsenkirchen",
+    sourceID: "feuerwehr",
     feedURL: "https://www.presseportal.de/rss/dienststelle_116260.rss2",
   },
   {
     cityID: "51056",
     cityName: "Gelsenkirchen",
     source: "Stadt Gelsenkirchen",
+    sourceID: "stadt",
     feedURL:
       "https://www.gelsenkirchen.de/de/_funktionsnavigation/presse/pressemeldungen/newsfeed/bereich/4-presse",
     format: "atom",
@@ -82,6 +91,11 @@ const MAX_ARTICLES = 100;
 const ONESIGNAL_API = "https://onesignal.com/api/v1/notifications";
 const PUSH_FRESH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_PUSH_PER_RUN = 6;
+
+// Full-text extraction: only fetch a few new article pages per cron run so we
+// stay well under the Workers free-tier subrequest limit (50 per invocation);
+// already-extracted bodies are reused from the previous feed.
+const MAX_BODY_FETCHES_PER_RUN = 12;
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
@@ -115,7 +129,10 @@ export default {
   },
 };
 
-async function rebuild(env: Env): Promise<{ version: number; updatedAt: string; articles: Article[] }> {
+async function rebuild(
+  env: Env,
+  prevArticles?: Article[],
+): Promise<{ version: number; updatedAt: string; articles: Article[] }> {
   const all: Article[] = [];
   for (const src of SOURCES) {
     try {
@@ -131,10 +148,15 @@ async function rebuild(env: Env): Promise<{ version: number; updatedAt: string; 
   const unique = all.filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
   unique.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
 
+  const articles = unique.slice(0, MAX_ARTICLES);
+  // Only on the cron path (prevArticles given): attach full article text,
+  // reusing bodies already extracted in the previous feed.
+  if (prevArticles) await enrichBodies(articles, prevArticles);
+
   const feed = {
     version: 1,
     updatedAt: new Date().toISOString(),
-    articles: unique.slice(0, MAX_ARTICLES),
+    articles,
   };
   await env.NEWS.put(FEED_KEY, JSON.stringify(feed));
   return feed;
@@ -142,9 +164,17 @@ async function rebuild(env: Env): Promise<{ version: number; updatedAt: string; 
 
 /** Cron path: rebuild the feed and push notifications for newly added articles. */
 async function refresh(env: Env): Promise<void> {
-  const previous = await env.NEWS.get(FEED_KEY);
-  const feed = await rebuild(env);
-  await pushNewArticles(env, previous, feed.articles);
+  const previousRaw = await env.NEWS.get(FEED_KEY);
+  let previousArticles: Article[] = [];
+  if (previousRaw) {
+    try {
+      previousArticles = (JSON.parse(previousRaw) as { articles: Article[] }).articles ?? [];
+    } catch {
+      previousArticles = [];
+    }
+  }
+  const feed = await rebuild(env, previousArticles);
+  await pushNewArticles(env, previousRaw, feed.articles);
 }
 
 // MARK: - Push (OneSignal)
@@ -194,7 +224,12 @@ async function sendPush(appId: string, apiKey: string, scheme: string, article: 
     app_id: appId,
     headings: { en: article.source, de: article.source },
     contents: { en: article.title, de: article.title },
-    filters: [{ field: "tag", key: `city_${article.cityID}`, relation: "=", value: "1" }],
+    // Implicit AND between filters: only devices that follow this city *and*
+    // have this source enabled (src_<id> = 1). The app sets these tags.
+    filters: [
+      { field: "tag", key: `city_${article.cityID}`, relation: "=", value: "1" },
+      { field: "tag", key: `src_${article.sourceID}`, relation: "=", value: "1" },
+    ],
     url: article.url,
     data: { city_id: article.cityID, article_url: article.url, source: article.source },
   };
@@ -231,6 +266,112 @@ async function fetchText(url: string): Promise<string> {
   return res.text();
 }
 
+// MARK: - Full-text extraction (mirrors the iOS ArticleHTMLExtractor)
+
+/**
+ * Attaches `body`/`contact` to the given articles. Bodies already extracted in
+ * the previous feed are reused; only a few genuinely new Presseportal pages are
+ * fetched per run (the city pages use a different layout and are left as teaser).
+ */
+async function enrichBodies(articles: Article[], prevArticles: Article[]): Promise<void> {
+  const prevById = new Map(prevArticles.map((a) => [a.id, a]));
+  let budget = MAX_BODY_FETCHES_PER_RUN;
+
+  for (const article of articles) {
+    const prev = prevById.get(article.id);
+    if (prev?.body && prev.body.length > 0) {
+      article.body = prev.body;
+      article.contact = prev.contact;
+      continue;
+    }
+    if (budget <= 0 || !article.url.includes("presseportal.de")) continue;
+    budget--;
+    try {
+      const html = await fetchText(article.url);
+      const extracted = extractArticle(html);
+      if (extracted.body.length > 0) {
+        article.body = extracted.body;
+        if (extracted.contact) article.contact = extracted.contact;
+      }
+    } catch (err) {
+      console.log("body fetch failed:", article.url, err);
+    }
+  }
+}
+
+function extractArticle(html: string): { body: string[]; contact?: string } {
+  const len = html.length;
+  const endMarkers = [
+    "contact-headline", "mod-toggle", "Rückfragen bitte an",
+    "Nachfragen für Journalist", "originator", "Original-Content von",
+  ];
+
+  // Body: between the "(ots)" dateline (after the story-city line) and the
+  // contact/attribution block.
+  let body: string[] = [];
+  const city = html.indexOf("story-city");
+  if (city >= 0) {
+    const datelineEnd = html.indexOf("</p>", city);
+    if (datelineEnd >= 0) {
+      const bodyStart = datelineEnd + 4;
+      let markerPos = len;
+      for (const marker of endMarkers) {
+        const pos = html.indexOf(marker, bodyStart);
+        if (pos >= 0 && pos < markerPos) markerPos = pos;
+      }
+      let bodyEnd = html.lastIndexOf("<", markerPos - 1);
+      if (bodyEnd < bodyStart) bodyEnd = markerPos;
+      if (bodyStart < bodyEnd) body = htmlToParagraphs(html.slice(bodyStart, bodyEnd));
+    }
+  }
+
+  // Contact: from the contact headline to the end of the attribution line.
+  let contact: string | undefined;
+  const headline = html.indexOf("contact-headline");
+  if (headline >= 0) {
+    let contactStart = html.lastIndexOf("<", headline - 1);
+    if (contactStart < 0) contactStart = headline;
+    let contactEnd = len;
+    const originator = html.indexOf("originator", contactStart);
+    const contactText = html.indexOf("contact-text", contactStart);
+    if (originator >= 0) {
+      const pEnd = html.indexOf("</p>", originator);
+      if (pEnd >= 0) contactEnd = pEnd + 4;
+    } else if (contactText >= 0) {
+      const pEnd = html.indexOf("</p>", contactText);
+      if (pEnd >= 0) contactEnd = pEnd + 4;
+    } else {
+      contactEnd = Math.min(len, contactStart + 1200);
+    }
+    if (contactStart < contactEnd) {
+      const text = htmlToParagraphs(html.slice(contactStart, contactEnd)).join("\n");
+      if (text) contact = text;
+    }
+  }
+
+  return { body, contact };
+}
+
+/** Like htmlToText, but keeps paragraph breaks and returns one entry per line. */
+function htmlToParagraphs(html: string): string[] {
+  const text = decodeEntities(
+    html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|ul|ol|h[1-6]|tr|table|blockquote)>/gi, "\n\n")
+      .replace(/<li\b[^>]*>/gi, "• ")
+      .replace(/<[^>]+>/g, ""),
+  )
+    .replace(/\r/g, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
 // MARK: - RSS parsing
 
 function parseFeed(xml: string, src: Source): Article[] {
@@ -257,6 +398,7 @@ function parseRss(xml: string, src: Source): Article[] {
       cityID: src.cityID,
       cityName: src.cityName,
       source: src.source,
+      sourceID: src.sourceID,
     });
   }
   return articles;
@@ -285,6 +427,7 @@ function parseAtom(xml: string, src: Source): Article[] {
       cityID: src.cityID,
       cityName: src.cityName,
       source: src.source,
+      sourceID: src.sourceID,
     });
   }
   return articles;
@@ -333,9 +476,18 @@ function decodeEntities(text: string): string {
     "&quot;": '"',
     "&apos;": "'",
     "&nbsp;": " ",
+    "&hellip;": "…",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&euro;": "€",
+    "&bdquo;": "„",
+    "&ldquo;": "“",
+    "&rdquo;": "”",
+    "&laquo;": "«",
+    "&raquo;": "»",
   };
   return text
-    .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (m) => named[m])
+    .replace(/&(amp|lt|gt|quot|apos|nbsp|hellip|ndash|mdash|euro|bdquo|ldquo|rdquo|laquo|raquo);/g, (m) => named[m])
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
     .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(parseInt(d, 10)));
 }
