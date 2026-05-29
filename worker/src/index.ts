@@ -152,10 +152,16 @@ async function rebuild(
   }
   all.push(...(await fetchWarnings()));
 
-  // De-duplicate by id, then sort newest first.
+  // De-duplicate by id, then sort: active warnings pinned on top (a long-running
+  // warning must not sink below fresher news), everything else newest first.
   const seen = new Set<string>();
   const unique = all.filter((a) => (seen.has(a.id) ? false : (seen.add(a.id), true)));
-  unique.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
+  unique.sort((a, b) => {
+    const aw = a.sourceID === "warnung" ? 1 : 0;
+    const bw = b.sourceID === "warnung" ? 1 : 0;
+    if (aw !== bw) return bw - aw;
+    return (b.publishedAt ?? "").localeCompare(a.publishedAt ?? "");
+  });
 
   const articles = unique.slice(0, MAX_ARTICLES);
   // Only on the cron path (prevArticles given): attach full article text,
