@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ArticleDetailView: View {
     @StateObject private var viewModel: ArticleDetailViewModel
+    @StateObject private var speech = SpeechReader()
     @ObservedObject private var bookmarks = BookmarkStore.shared
     @State private var showingSafari = false
 
@@ -46,6 +47,16 @@ struct ArticleDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    speech.toggle(paragraphs: viewModel.paragraphs)
+                } label: {
+                    Image(systemName: speech.isReading ? "stop.circle" : "speaker.wave.2")
+                        .foregroundStyle(speech.isReading ? Theme.Color.brand : Theme.Color.ink)
+                }
+                .accessibilityLabel(speech.isReading ? "Vorlesen stoppen" : "Vorlesen")
+                .disabled(viewModel.paragraphs.isEmpty)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     bookmarks.toggle(article)
                 } label: {
                     Image(systemName: bookmarks.isBookmarked(article) ? "bookmark.fill" : "bookmark")
@@ -63,6 +74,7 @@ struct ArticleDetailView: View {
         .task {
             await viewModel.loadFullContent()
         }
+        .onDisappear { speech.stop() }
         .sheet(isPresented: $showingSafari) {
             SafariView(url: article.url)
                 .ignoresSafeArea()

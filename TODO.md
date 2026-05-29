@@ -73,7 +73,7 @@ Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vo
 - [x] **Lesezeichen** („Gemerkt"): `BookmarkStore` (persistiert), Bookmark-Button in der Detailansicht, Liste (`BookmarksView`), Zugang per Symbol in der Feed-Leiste
 - [ ] **Stichwort-/Stadtteil-Alarm** für Push (baut auf dem Worker auf)
 - [ ] **Story-Format** (durch Top-Schlagzeilen swipen)
-- [ ] **Vorlesen/Audio** (`AVSpeechSynthesizer`)
+- [x] **Vorlesen/Audio** (`AVSpeechSynthesizer`, Toolbar-Button in der Detailansicht; stoppt automatisch beim Verlassen)
 - [ ] **Home-Screen-Widget** (WidgetKit, neueste Schlagzeile)
 - [ ] **Suche** im Feed
 - [ ] **Gelesen/ungelesen** bzw. „neu seit letztem Besuch"
