@@ -6,6 +6,7 @@ import Foundation
 /// source and push notifications can be toggled per source. The raw value
 /// matches the worker's `sourceID` and the OneSignal `src_<id>` tag.
 enum NewsSource: String, CaseIterable, Identifiable, Sendable {
+    case warnung
     case polizei
     case feuerwehr
     case stadt
@@ -15,18 +16,23 @@ enum NewsSource: String, CaseIterable, Identifiable, Sendable {
     /// Short label for filter chips and settings rows.
     var label: String {
         switch self {
+        case .warnung: return "Warnung"
         case .polizei: return "Polizei"
         case .feuerwehr: return "Feuerwehr"
         case .stadt: return "Stadt"
         }
     }
 
-    /// Maps an article's full source string, e.g. "Feuerwehr Gelsenkirchen".
+    /// Maps an article's full source string, e.g. "Feuerwehr Gelsenkirchen" or
+    /// "Wetterwarnung (DWD)". Order matters: warnings are matched before the
+    /// city catch-all.
     init(sourceName: String) {
         if sourceName.localizedCaseInsensitiveContains("Polizei") {
             self = .polizei
         } else if sourceName.localizedCaseInsensitiveContains("Feuerwehr") {
             self = .feuerwehr
+        } else if sourceName.localizedCaseInsensitiveContains("warn") {
+            self = .warnung
         } else {
             self = .stadt
         }

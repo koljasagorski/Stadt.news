@@ -6,7 +6,7 @@ der Stadt — als schnell lesbarer, redaktionell gestalteter Feed.
 
 ## Funktionen
 - **Feed** der aktuellen Meldungen mit Pull-to-Refresh und Lade-/Fehlerzuständen
-- **Quellen** in einem Feed: Polizei, Feuerwehr und Stadt Gelsenkirchen, mit Filterleiste je Quelle
+- **Quellen** in einem Feed: Polizei, Feuerwehr, Stadt Gelsenkirchen und amtliche Warnungen (BBK/NINA – u. a. Wetter, Hochwasser, Zivilschutz), mit Filterleiste je Quelle
 - **Suche** über Titel und Teaser der geladenen Meldungen
 - **Lokaler Cache**: der zuletzt geladene Feed wird beim Start sofort gezeigt und im Hintergrund aktualisiert (auch offline lesbar)
 - **Artikel-Detail** mit Volltext (server-seitig vom Backend vorbereitet, sonst von der Artikelseite nachgeladen); Teilen und „Im Original lesen"
@@ -77,9 +77,11 @@ eintragen. Der Worker übernimmt auch die Push-Auslösung (siehe oben);
 Geocoding (Karte) bleibt on-device.
 
 ## Datenquelle
-Presseportal-RSS von Polizei und Feuerwehr Gelsenkirchen (news aktuell GmbH)
-sowie der Presse-Newsfeed der Stadt Gelsenkirchen. Alle Rechte an den Inhalten
-verbleiben bei den jeweiligen Herausgebern.
+Presseportal-RSS von Polizei und Feuerwehr Gelsenkirchen (news aktuell GmbH),
+der Presse-Newsfeed der Stadt Gelsenkirchen sowie amtliche Warnungen des
+Bundesamts für Bevölkerungsschutz und Katastrophenhilfe (BBK) über die
+NINA-API (`warnung.bund.de`). Alle Rechte an den Inhalten verbleiben bei den
+jeweiligen Herausgebern.
 
 ## Roadmap
 Geplante Aufgaben und Architektur-Notizen (u. a. das geplante Cloudflare-Backend)

@@ -23,6 +23,7 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Quellenfilter im Feed (Polizei/Feuerwehr/Stadt) via `NewsSource`; Suche über Titel/Teaser
 - [x] Push pro Quelle: `src_<id>`-Tags (App) + `city_ AND src_`-Filter (Worker), Schalter je Quelle in den Einstellungen
 - [x] Server-seitiger Volltext: Worker extrahiert Body/Kontakt (Presseportal) und liefert sie im Feed; App zeigt sie sofort, sonst On-Device-Fallback
+- [x] Amtliche Warnungen (BBK/NINA) als Quelle `warnung` im Feed (Dashboard für Gelsenkirchen, Detail als Body); greift automatisch in Quellenfilter/Suche/Push pro Quelle
 - [x] `README.md` angelegt
 - PRs: #1 (Push + Karte) und #3 (Rebrand) gemergt; #5 (Backend + Folgearbeiten) offen
 

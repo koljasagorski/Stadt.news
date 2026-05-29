@@ -59,12 +59,12 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Quellen", value: "Polizei · Feuerwehr · Stadt")
+            LabeledContent("Quellen", value: "Polizei · Feuerwehr · Stadt · Warnungen")
             LabeledContent("Version", value: Self.appVersion)
         } header: {
             Text("Über Gelsenkirchen.news")
         } footer: {
-            Text("Gelsenkirchen.news bündelt offizielle Meldungen der Polizei und Feuerwehr Gelsenkirchen (über das Presseportal der news aktuell GmbH) sowie Pressemeldungen der Stadt Gelsenkirchen (gelsenkirchen.de). Alle Rechte an den Inhalten verbleiben bei den jeweiligen Herausgebern.")
+            Text("Gelsenkirchen.news bündelt offizielle Meldungen der Polizei und Feuerwehr Gelsenkirchen (über das Presseportal der news aktuell GmbH), Pressemeldungen der Stadt Gelsenkirchen (gelsenkirchen.de) sowie amtliche Warnungen des Bundesamts für Bevölkerungsschutz (BBK/NINA). Alle Rechte an den Inhalten verbleiben bei den jeweiligen Herausgebern.")
         }
         .listRowBackground(Theme.Color.surface)
     }

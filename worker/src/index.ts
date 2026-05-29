@@ -97,6 +97,14 @@ const MAX_PUSH_PER_RUN = 6;
 // already-extracted bodies are reused from the previous feed.
 const MAX_BODY_FETCHES_PER_RUN = 12;
 
+// Official warnings (BBK NINA: aggregates MoWaS, KATWARN, DWD weather, flood …).
+// The dashboard endpoint returns only currently active warnings for the region,
+// so expired ones drop out automatically. 055130000000 = Gelsenkirchen (ARS).
+const WARN_ARS = "055130000000";
+const NINA_DASHBOARD = `https://warnung.bund.de/api31/dashboard/${WARN_ARS}.json`;
+const ninaWarning = (id: string) => `https://warnung.bund.de/api31/warnings/${encodeURIComponent(id)}.json`;
+const MAX_WARNING_DETAILS = 10;
+
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(refresh(env));
@@ -142,6 +150,7 @@ async function rebuild(
       console.log(`feed error for ${src.cityName}:`, err);
     }
   }
+  all.push(...(await fetchWarnings()));
 
   // De-duplicate by id, then sort newest first.
   const seen = new Set<string>();
@@ -266,6 +275,92 @@ async function fetchText(url: string): Promise<string> {
   return res.text();
 }
 
+// MARK: - Official warnings (BBK NINA)
+
+interface DashboardItem {
+  id?: string;
+  i18nTitle?: Record<string, string>;
+  sent?: string;
+}
+
+/**
+ * Loads currently active official warnings for Gelsenkirchen and maps them to
+ * articles (sourceID "warnung"), so they flow through the same feed, filter and
+ * per-source push as everything else. The CAP description/instruction is shipped
+ * as the article body, so the detail view works without an extra fetch.
+ */
+async function fetchWarnings(): Promise<Article[]> {
+  let list: DashboardItem[];
+  try {
+    list = JSON.parse(await fetchText(NINA_DASHBOARD)) as DashboardItem[];
+  } catch (err) {
+    console.log("warnings: dashboard fetch failed", err);
+    return [];
+  }
+  if (!Array.isArray(list) || list.length === 0) return [];
+
+  const articles: Article[] = [];
+  let budget = MAX_WARNING_DETAILS;
+
+  for (const item of list) {
+    if (!item?.id) continue;
+    const title = pickGerman(item.i18nTitle) || "Amtliche Warnung";
+    let summary = title;
+    let body: string[] | undefined;
+    let url = "https://warnung.bund.de/";
+    let source = "Amtliche Warnung";
+    let publishedAt = parseDate(item.sent ?? "");
+
+    if (budget > 0) {
+      budget--;
+      try {
+        const detail = JSON.parse(await fetchText(ninaWarning(item.id))) as {
+          sent?: string;
+          info?: Array<{ event?: string; description?: string; instruction?: string; web?: string }>;
+        };
+        const info = detail.info?.[0] ?? {};
+        source = warningSource(item.id, info.event);
+        const description = htmlToParagraphs(info.description ?? "");
+        const instruction = htmlToParagraphs(info.instruction ?? "");
+        body = [...description, ...instruction];
+        if (description.length > 0) summary = description.join(" ").slice(0, 300);
+        if (typeof info.web === "string" && /^https?:\/\//i.test(info.web)) url = info.web;
+        if (detail.sent) publishedAt = parseDate(detail.sent);
+      } catch (err) {
+        console.log("warnings: detail fetch failed", item.id, err);
+      }
+    }
+
+    articles.push({
+      id: item.id,
+      title,
+      summary,
+      url,
+      publishedAt,
+      cityID: "51056",
+      cityName: "Gelsenkirchen",
+      source,
+      sourceID: "warnung",
+      body: body && body.length > 0 ? body : undefined,
+    });
+  }
+  return articles;
+}
+
+function pickGerman(i18n?: Record<string, string>): string {
+  if (!i18n) return "";
+  return i18n["de"] ?? Object.values(i18n)[0] ?? "";
+}
+
+/** A human label per warning channel; all contain "Warn" so the app maps them. */
+function warningSource(id: string, event?: string): string {
+  if (id.startsWith("dwd")) return "Wetterwarnung (DWD)";
+  if (id.startsWith("lhp")) return "Hochwasserwarnung";
+  if (id.startsWith("kat")) return "KATWARN-Warnung";
+  if (event && /hochwasser/i.test(event)) return "Hochwasserwarnung";
+  return "Amtliche Warnung";
+}
+
 // MARK: - Full-text extraction (mirrors the iOS ArticleHTMLExtractor)
 
 /**
@@ -278,13 +373,15 @@ async function enrichBodies(articles: Article[], prevArticles: Article[]): Promi
   let budget = MAX_BODY_FETCHES_PER_RUN;
 
   for (const article of articles) {
+    // Warnings already carry their own body; city pages have no extractable one.
+    if (!article.url.includes("presseportal.de")) continue;
     const prev = prevById.get(article.id);
     if (prev?.body && prev.body.length > 0) {
       article.body = prev.body;
       article.contact = prev.contact;
       continue;
     }
-    if (budget <= 0 || !article.url.includes("presseportal.de")) continue;
+    if (budget <= 0) continue;
     budget--;
     try {
       const html = await fetchText(article.url);
