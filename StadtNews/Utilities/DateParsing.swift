@@ -9,6 +9,26 @@ enum DateParsing {
         formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
         return formatter
     }()
+
+    /// Parses an ISO 8601 timestamp, tolerating both the fractional-seconds form
+    /// the backend emits (`…:54.000Z`) and the plain form (`…:54Z`). The built-in
+    /// `JSONDecoder.dateDecodingStrategy = .iso8601` only handles the latter, so
+    /// the remote feed needs this when decoding `publishedAt`.
+    static func iso8601(from string: String) -> Date? {
+        iso8601Fractional.date(from: string) ?? iso8601Plain.date(from: string)
+    }
+
+    private static let iso8601Fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601Plain: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
 }
 
 extension Date {

@@ -23,13 +23,6 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
-## News-Push poller runtime state (persisted via CI cache, never committed)
-state/
-
-## Python
-__pycache__/
-*.pyc
-
 ## Cloudflare Worker
 worker/node_modules/
 worker/.wrangler/

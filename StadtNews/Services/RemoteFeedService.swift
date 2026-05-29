@@ -44,7 +44,18 @@ final class RemoteFeedService: Sendable {
                 return nil
             }
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            // The backend emits ISO 8601 with fractional seconds ("…:54.000Z"),
+            // which the built-in `.iso8601` strategy cannot parse – decode it
+            // tolerantly so a present timestamp never fails the whole feed.
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let raw = try container.decode(String.self)
+                guard let date = DateParsing.iso8601(from: raw) else {
+                    throw DecodingError.dataCorruptedError(
+                        in: container, debugDescription: "Ungültiges ISO-8601-Datum: \(raw)")
+                }
+                return date
+            }
             let envelope = try decoder.decode(Envelope.self, from: data)
 
             let ids = Set(cities.map(\.id))
