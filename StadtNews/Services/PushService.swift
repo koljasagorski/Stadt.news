@@ -37,6 +37,9 @@ final class PushService {
         guard !didStart, Self.isConfigured else { return }
         didStart = true
         OneSignal.initialize(Self.appID, withLaunchOptions: launchOptions)
+        // Route push taps into the app instead of OneSignal's default
+        // "open the URL in Safari" behaviour.
+        OneSignal.Notifications.addClickListener(self)
         #endif
     }
 
@@ -89,3 +92,18 @@ final class PushService {
         #endif
     }
 }
+
+#if canImport(OneSignalFramework)
+extension PushService: OSNotificationClickListener {
+    /// Intercepts a push tap and hands the article URL to the in-app router so
+    /// the user lands in the article view rather than in the browser. The
+    /// `article_url` field is the one we send from the worker's push payload.
+    func onClick(event: OSNotificationClickEvent) {
+        guard let data = event.notification.additionalData,
+              let urlString = data["article_url"] as? String else { return }
+        Task { @MainActor in
+            DeepLinkRouter.shared.openArticle(urlString)
+        }
+    }
+}
+#endif

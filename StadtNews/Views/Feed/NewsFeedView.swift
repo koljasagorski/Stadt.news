@@ -4,9 +4,11 @@ struct NewsFeedView: View {
     let cities: [City]
 
     @StateObject private var viewModel = NewsFeedViewModel()
+    @ObservedObject private var router = DeepLinkRouter.shared
     @State private var cityFilter: String?
     @State private var sourceFilter: NewsSource?
     @State private var searchText = ""
+    @State private var safariFallback: IdentifiableURL?
 
     /// Filter restricted to currently selected cities (guards against a stale
     /// filter after the user changes their selection in settings).
@@ -63,6 +65,26 @@ struct NewsFeedView: View {
         }
         .task(id: cities.map(\.id)) {
             await viewModel.load(cities: cities)
+        }
+        .onChange(of: router.pendingArticleURL, initial: true) { _, _ in resolvePendingDeepLink() }
+        .onChange(of: viewModel.articles, initial: true) { _, _ in resolvePendingDeepLink() }
+        .sheet(item: $safariFallback) { item in
+            SafariView(url: item.url).ignoresSafeArea()
+        }
+    }
+
+    /// Resolves a pending push-tap URL against the loaded feed. If a matching
+    /// article exists, it is pushed onto the navigation stack; otherwise – once
+    /// the feed is non-empty – the URL is opened in the in-app Safari sheet so
+    /// the tap is never lost.
+    private func resolvePendingDeepLink() {
+        guard let url = router.pendingArticleURL else { return }
+        if let match = viewModel.articles.first(where: { $0.url == url }) {
+            router.path.append(match)
+            router.pendingArticleURL = nil
+        } else if !viewModel.articles.isEmpty {
+            safariFallback = IdentifiableURL(url: url)
+            router.pendingArticleURL = nil
         }
     }
 
@@ -184,4 +206,11 @@ struct NewsFeedView: View {
         formatter.dateFormat = "EEEE, d. MMMM yyyy"
         return formatter.string(from: Date()).uppercased()
     }()
+}
+
+/// Local wrapper to give `URL` an `Identifiable` conformance for `.sheet(item:)`
+/// without exporting a module-wide extension that could collide with libraries.
+private struct IdentifiableURL: Identifiable {
+    let url: URL
+    var id: URL { url }
 }

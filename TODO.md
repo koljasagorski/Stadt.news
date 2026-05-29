@@ -50,7 +50,7 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [ ] Capabilities: Push Notifications + Background Modes → Remote notifications
 - [ ] Worker-Secrets: `wrangler secret put ONESIGNAL_APP_ID` + `ONESIGNAL_REST_API_KEY` (optional `ONESIGNAL_AUTH_SCHEME`, Default „Basic", neuere Keys „Key")
 - [x] Auslösung gebaut: Worker erkennt neue Artikel im Cron und sendet via OneSignal (Dry-Run ohne Secret, kein Versand älterer/seeding-Artikel)
-- [ ] Optional: Tippen auf Push öffnet den Artikel in der App (Deeplink) statt im Browser
+- [x] Tippen auf Push öffnet den Artikel in der App (DeepLinkRouter + OneSignal-Click-Listener; Safari-Fallback wenn der Artikel nicht im aktuellen Feed liegt)
 
 ## 3. Cloudflare-Backend (Aggregations- + Cache-Schicht)
 Siehe ausführliches Konzept im Chatverlauf. Ziel: App liest einen schnellen, vorgebauten JSON-Endpunkt statt selbst N Feeds zu laden.

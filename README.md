@@ -12,7 +12,7 @@ der Stadt — als schnell lesbarer, redaktionell gestalteter Feed.
 - **Artikel-Detail** mit Volltext (server-seitig vom Backend vorbereitet, sonst von der Artikelseite nachgeladen); Teilen und „Im Original lesen"
 - **Karten-Ansicht**: Meldungen mit erkennbarem Ort als Pins (Best-Effort-Geocoding aus Straßennamen/Stadtteilen)
 - **Lesezeichen** („Gemerkt"): Meldungen speichern und in einer eigenen Liste wiederfinden
-- **Push-Mitteilungen** bei neuen Meldungen (OneSignal, ausgelöst vom Cloudflare-Worker), wahlweise je Quelle — siehe Setup unten
+- **Push-Mitteilungen** bei neuen Meldungen (OneSignal, ausgelöst vom Cloudflare-Worker), wahlweise je Quelle; Tippen öffnet den Artikel direkt in der App — siehe Setup unten
 - Hell-/Dunkelmodus
 
 ## Projektstruktur

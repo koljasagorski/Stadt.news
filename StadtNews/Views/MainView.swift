@@ -2,12 +2,13 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject private var settings: AppSettings
+    @StateObject private var router = DeepLinkRouter.shared
     @State private var showingSettings = false
     @State private var showingMap = false
     @State private var showingBookmarks = false
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $router.path) {
             NewsFeedView(cities: settings.selectedCities)
                 .navigationDestination(for: Article.self) { article in
                     ArticleDetailView(article: article)
