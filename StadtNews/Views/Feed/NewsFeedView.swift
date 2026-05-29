@@ -5,6 +5,8 @@ struct NewsFeedView: View {
 
     @StateObject private var viewModel = NewsFeedViewModel()
     @State private var cityFilter: String?
+    @State private var sourceFilter: NewsSource?
+    @State private var searchText = ""
 
     /// Filter restricted to currently selected cities (guards against a stale
     /// filter after the user changes their selection in settings).
@@ -13,8 +15,25 @@ struct NewsFeedView: View {
         return cityFilter
     }
 
+    /// Sources actually present in the loaded feed, in catalog order.
+    private var availableSources: [NewsSource] {
+        let present = Set(viewModel.articles.map(\.newsSource))
+        return NewsSource.allCases.filter { present.contains($0) }
+    }
+
     private var visibleArticles: [Article] {
-        viewModel.articles(forCityID: effectiveFilter)
+        var result = viewModel.articles(forCityID: effectiveFilter)
+        if let sourceFilter {
+            result = result.filter { $0.newsSource == sourceFilter }
+        }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            result = result.filter {
+                $0.title.localizedStandardContains(query)
+                    || $0.summary.localizedStandardContains(query)
+            }
+        }
+        return result
     }
 
     private var showsCityKicker: Bool {
@@ -30,10 +49,15 @@ struct NewsFeedView: View {
                     cityFilterBar
                 }
 
+                if availableSources.count > 1 {
+                    sourceFilterBar
+                }
+
                 content
             }
         }
         .background(Theme.Color.paper.ignoresSafeArea())
+        .searchable(text: $searchText, prompt: "Meldungen durchsuchen")
         .refreshable {
             await viewModel.refresh(cities: cities)
         }
@@ -66,6 +90,23 @@ struct NewsFeedView: View {
                 ForEach(cities) { city in
                     CityChip(title: city.name, isSelected: effectiveFilter == city.id) {
                         withAnimation(.easeOut(duration: 0.15)) { cityFilter = city.id }
+                    }
+                }
+            }
+            .padding(.horizontal, Theme.pageMargin)
+        }
+        .padding(.bottom, Theme.Spacing.lg)
+    }
+
+    private var sourceFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: Theme.Spacing.sm) {
+                CityChip(title: "Alle", isSelected: sourceFilter == nil) {
+                    withAnimation(.easeOut(duration: 0.15)) { sourceFilter = nil }
+                }
+                ForEach(availableSources) { source in
+                    CityChip(title: source.label, isSelected: sourceFilter == source) {
+                        withAnimation(.easeOut(duration: 0.15)) { sourceFilter = source }
                     }
                 }
             }

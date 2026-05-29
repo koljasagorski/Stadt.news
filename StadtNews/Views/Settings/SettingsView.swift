@@ -37,10 +37,23 @@ struct SettingsView: View {
             }
             .tint(Theme.Color.brand)
             .listRowBackground(Theme.Color.surface)
+
+            ForEach(NewsSource.allCases) { source in
+                Toggle(isOn: Binding(
+                    get: { settings.isPushEnabled(for: source) },
+                    set: { settings.setPushEnabled($0, for: source) }
+                )) {
+                    Text(source.label)
+                        .foregroundStyle(settings.pushEnabled ? Theme.Color.ink : Theme.Color.tertiaryInk)
+                }
+                .tint(Theme.Color.brand)
+                .disabled(!settings.pushEnabled)
+                .listRowBackground(Theme.Color.surface)
+            }
         } header: {
             Text("Mitteilungen")
         } footer: {
-            Text("Erhalten Sie eine Mitteilung, sobald in Gelsenkirchen eine neue Meldung erscheint. Sie können dies jederzeit ändern.")
+            Text("Erhalten Sie eine Mitteilung, sobald eine neue Meldung erscheint – und wählen Sie, von welchen Quellen. Sie können dies jederzeit ändern.")
         }
     }
 

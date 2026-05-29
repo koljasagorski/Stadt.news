@@ -17,6 +17,11 @@ struct Article: Identifiable, Hashable, Sendable, Codable {
     let cityName: String
     /// Publishing authority, e.g. "Polizei Gelsenkirchen".
     let source: String
+    /// Full article paragraphs, when the backend has already extracted them.
+    /// Optional so older cached/bookmarked items still decode.
+    var body: [String]? = nil
+    /// Contact / attribution block, when the backend captured it.
+    var contact: String? = nil
 }
 
 extension Article {

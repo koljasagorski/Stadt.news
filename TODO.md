@@ -19,8 +19,12 @@ Internes Xcode-Target heißt weiterhin `StadtNews`, Bundle-ID `news.stadt.app`.
 - [x] Karten-Straßenerkennung verbessert (Stadtteile + „Bahnhof"): Trefferquote im Test 6/15 → 12/15
 - [x] Lesezeichen („Gemerkt") — `BookmarkStore`, Detail-Button, `BookmarksView`
 - [x] Cloudflare-Worker (`worker/`) deployed, aggregiert Polizei + Feuerwehr + Stadt Gelsenkirchen (RSS + Atom); App liest ihn via `RemoteFeedService` mit RSS-Fallback
+- [x] Fix: tolerantes ISO-8601-Decoding (mit/ohne Millisekunden) — App nutzt den Backend-Feed jetzt zuverlässig (vorher stiller RSS-Fallback)
+- [x] Quellenfilter im Feed (Polizei/Feuerwehr/Stadt) via `NewsSource`; Suche über Titel/Teaser
+- [x] Push pro Quelle: `src_<id>`-Tags (App) + `city_ AND src_`-Filter (Worker), Schalter je Quelle in den Einstellungen
+- [x] Server-seitiger Volltext: Worker extrahiert Body/Kontakt (Presseportal) und liefert sie im Feed; App zeigt sie sofort, sonst On-Device-Fallback
 - [x] `README.md` angelegt
-- PRs: #1 (Push + Karte) und #3 (Rebrand) gemergt; #5 (Cloudflare-Backend) offen
+- PRs: #1 (Push + Karte) und #3 (Rebrand) gemergt; #5 (Backend + Folgearbeiten) offen
 
 ## Entscheidungen (getroffen)
 - [x] Geocoding bleibt **on-device** (Worker macht kein Geocoding)

@@ -6,11 +6,13 @@ der Stadt — als schnell lesbarer, redaktionell gestalteter Feed.
 
 ## Funktionen
 - **Feed** der aktuellen Meldungen mit Pull-to-Refresh und Lade-/Fehlerzuständen
+- **Quellen** in einem Feed: Polizei, Feuerwehr und Stadt Gelsenkirchen, mit Filterleiste je Quelle
+- **Suche** über Titel und Teaser der geladenen Meldungen
 - **Lokaler Cache**: der zuletzt geladene Feed wird beim Start sofort gezeigt und im Hintergrund aktualisiert (auch offline lesbar)
-- **Artikel-Detail** mit Volltext, der von der Original-Artikelseite nachgeladen wird; Teilen und „Im Original lesen"
+- **Artikel-Detail** mit Volltext (server-seitig vom Backend vorbereitet, sonst von der Artikelseite nachgeladen); Teilen und „Im Original lesen"
 - **Karten-Ansicht**: Meldungen mit erkennbarem Ort als Pins (Best-Effort-Geocoding aus Straßennamen/Stadtteilen)
 - **Lesezeichen** („Gemerkt"): Meldungen speichern und in einer eigenen Liste wiederfinden
-- **Push-Mitteilungen** bei neuen Meldungen (OneSignal, ausgelöst vom Cloudflare-Worker) — siehe Setup unten
+- **Push-Mitteilungen** bei neuen Meldungen (OneSignal, ausgelöst vom Cloudflare-Worker), wahlweise je Quelle — siehe Setup unten
 - Hell-/Dunkelmodus
 
 ## Projektstruktur

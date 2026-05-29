@@ -17,8 +17,16 @@ final class ArticleDetailViewModel: ObservableObject {
     init(article: Article, service: ArticleContentService = .shared) {
         self.article = article
         self.service = service
-        let teaser = article.summary.trimmingCharacters(in: .whitespacesAndNewlines)
-        self.paragraphs = teaser.isEmpty ? [] : [teaser]
+        if let body = article.body, !body.isEmpty {
+            // Full text already delivered by the backend – show it instantly
+            // (works offline too) and skip the on-device page fetch.
+            self.paragraphs = body
+            self.contact = article.contact
+            self.loadedFull = true
+        } else {
+            let teaser = article.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+            self.paragraphs = teaser.isEmpty ? [] : [teaser]
+        }
     }
 
     func loadFullContent() async {

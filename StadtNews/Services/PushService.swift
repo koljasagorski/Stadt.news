@@ -73,4 +73,19 @@ final class PushService {
         if !remove.isEmpty { OneSignal.User.removeTags(remove) }
         #endif
     }
+
+    /// Mirrors the per-source push preferences into OneSignal tags
+    /// (`src_<id> = "1"` / `"0"`), so the worker only pushes a source to users
+    /// who enabled it. Disabled sources are set to "0" (not removed) so the
+    /// worker's `src_<id> = 1` filter reliably excludes them.
+    func syncSourceTags(_ enabledSourceIDs: Set<String>) {
+        #if canImport(OneSignalFramework)
+        guard Self.isConfigured else { return }
+        var tags: [String: String] = [:]
+        for source in NewsSource.allCases {
+            tags["src_\(source.id)"] = enabledSourceIDs.contains(source.id) ? "1" : "0"
+        }
+        OneSignal.User.addTags(tags)
+        #endif
+    }
 }
